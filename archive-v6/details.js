@@ -1,0 +1,66 @@
+/* VR 순회 및 4방향 사진 대조에 따른 상세. 모든 위치/치수는 상대 비율 근사.
+ * 전시대와 건축 장식은 보존하되 전시품·인쇄물·모니터는 생성하지 않는다. */
+(()=>{
+ const d=MuseumLayout;
+ d.detailBoxes=[
+  {id:'reception-body',at:[231,413],size:[2.65,.94,.72],color:[.83,.84,.79],room:'bow'},
+  {id:'reception-top',at:[231,413],bottom:.94,size:[2.77,.09,.84],color:[.31,.28,.24],room:'bow'},
+  {id:'reception-return',at:[195,395],size:[.70,.94,1.45],color:[.83,.84,.79],room:'bow'},
+  {id:'maru-worktop',at:[491,404],bottom:.72,size:[.65,.13,2.6],color:[.48,.32,.21],room:'bow'}
+ ];
+ d.frames.push(
+  {id:'entrance-glass-north',a:[205,326],b:[205,370],height:2.5,divisions:2,glazed:true,room:'bow',evidence:'입구 VR 유리 전실. 평면 대응 근사'},
+  {id:'entrance-glass-south',a:[205,409],b:[205,455],height:2.5,divisions:2,glazed:true,room:'bow',evidence:'입구 VR 유리 전실. 중앙 출입 폭 확보'}
+ );
+ d.detailArches=[{id:'video-route-arch',a:[294,308],b:[392,308],spring:2.18,rise:.38,depth:.14,thickness:.14,posts:true,room:'bow',evidence:'VR에서 영상실 동선으로 넘어가는 목재 기둥과 완만한 상부 아치'}];
+ d.detailRibbons=[];
+ for(const [id,x,side] of [['bow-left',350,-1],['bow-right',490,1]]){
+   const path=Array.from({length:33},(_,i)=>{const t=i/32;return [x+side*24*Math.sin(Math.PI*t),320+104*t];});
+   d.detailRibbons.push({id,path,bottom:2.38,height:.30,width:5,room:'bow'});
+ }
+ d.detailRails=[{id:'bow-string-north',a:[350,320],b:[490,320]},{id:'bow-string-south',a:[350,424],b:[490,424]}];
+ for(let z=337;z<=407;z+=23)d.detailRails.push({id:'bow-cross-'+z,a:[330,z],b:[510,z]});
+ // 체험마루 서측 통로 끝에서 야외 방향으로 이어지는 작은 유리문.
+ d.shell.find(w=>w.id==='shell-bow-south').openings=[{from:.022,to:.085,height:2.18,kind:'glazed',divisions:1,note:'VR 통로 끝 유리문. 남측 벽의 위치와 폭은 사진 대응 근사'}];
+ d.displays=[
+  {id:'bow-central-platform',at:[419,365],size:[3.2,.22,2.6],type:'platform',room:'bow'},
+  {id:'bow-south-case',at:[286,465],size:[3.7,.70,.68],type:'low',room:'bow'},
+  {id:'bow-north-case',at:[255,337],size:[2.5,.68,.60],type:'low',room:'bow'},
+  {id:'bow-east-case',at:[532,328],size:[.65,.72,1.55],type:'low',room:'bow'},
+  {id:'donated-workbench',at:[1039,403],size:[.97,.78,.67],type:'platform',room:'donated'},
+  {id:'donated-small-south',at:[1075,404],size:[.69,.68,.54],type:'low',room:'donated'},
+  {id:'donated-north-horizontal',at:[1124,266],size:[1.52,.70,.60],type:'low',room:'donated'},
+  {id:'donated-peninsula-side',at:[1062,285],size:[.55,.70,1.52],type:'low',room:'donated'},
+  {id:'donated-peninsula-square',at:[1082,335],size:[.98,.70,1.02],type:'low',room:'donated'},
+  {id:'donated-south-right',at:[1124,407],size:[1.50,.70,.47],type:'low',room:'donated'}
+ ];
+ for(const [i,x] of [438,577,720,858].entries()){
+  d.displays.push({id:'gallery-north-'+i,at:[x,48],size:[3.5,.65,.75],type:'low',room:'long'});
+  d.displays.push({id:'gallery-divider-'+i,at:[x,162],size:[3.4,.74,.85],type:'case',room:'long'});
+ }
+ // 벽 매입부: 뒤벽·측벽·상인방과 하부 받침을 갖는 두꺼운 내부 벽 라이닝.
+ // 외벽을 투명 상자로 바꾸지 않는다. 전면 유리만 별도 생성한다.
+ d.niches=[
+  {id:'donated-peninsula-recess',a:[1093,256],b:[1093,317],inward:[-1,0],depth:.65,sill:.55,top:2.45,room:'donated',evidence:'사용자 제공 확대 상단도: 중앙 상부 세로 진열부. 하단 정사각 진열대와 분리. 높이는 기존 VR 근사'},
+  {id:'donated-west-lower-recess',a:[989,338],b:[989,413],inward:[1,0],depth:.85,sill:.60,top:2.45,room:'donated',evidence:'사용자 제공 확대 상단도: 좌하단 긴 진열부. 상부까지 연장하지 않음'},
+  {id:'bow-arrow-wall',a:[239,473],b:[344,473],inward:[0,-1],depth:.48,sill:.55,top:2.35,room:'bow',evidence:'입구 반대편 VR의 벽 매입 화살 진열부'},
+  {id:'gallery-inset',a:[418,158],b:[512,158],inward:[0,1],depth:.40,sill:.60,top:2.40,room:'long',evidence:'긴 전시영역의 기둥 사이 매입형 진열 구간'}
+ ];
+ // 확대 상단도 x=186→153→58의 좌상단 꺾임을 기존 건물 좌표에 대응.
+ // 벽선 바깥 좌상단은 인접 서비스/연결 영역이며 전시실을 직사각형으로 채우지 않는다.
+ d.walls.push(
+  {id:'donated-west-upper',a:[1028,256],b:[1028,326],thickness:.16,room:'donated',evidence:'제공 상단도: 좌상단 수직 벽선'},
+  {id:'donated-west-jog-a',a:[1028,326],b:[1017,326],thickness:.16,room:'donated',evidence:'제공 상단도: 좌상단 벽의 첫 꺾임'},
+  {id:'donated-west-jog-b',a:[1017,326],b:[1017,337],thickness:.16,room:'donated',evidence:'제공 상단도: 좌하단 진열부 위 되돌림'},
+  {id:'donated-west-shoulder',a:[1017,337],b:[980,337],thickness:.16,room:'donated',evidence:'제공 상단도: 좌하단으로 넓어지는 공간 경계'}
+ );
+ d.walls.find(w=>w.id==='donated-entry').openings=[{from:48/165,to:88/165,height:2.25,kind:'opening',note:'제공 확대 상단도의 상부 진입부에 맞춰 이동. 좌표는 기존 전체 평면과의 대응 근사'}];
+ d.shell.find(w=>w.id==='shell-donated-east').openings=[{from:.18,to:.40,height:2.4,kind:'opening',note:'제공 상단도 오른쪽 상부의 열린 연결부. 긴 벽은 그 아래에서 시작. 외측 연결 영역은 화면 밖이라 추가하지 않음'}];
+ const donated=d.rooms.find(r=>r.id==='donated');
+ donated.polygon=[[1028,256],[1145,256],[1145,414],[980,414],[980,337],[1017,337],[1017,326],[1028,326]];
+ donated.note='사용자 제공 확대 평면도에 따라 좌상단 꺾임, 중앙 반도형 진열부, 좌하단 긴 진열부와 하단 책상을 재배치. 치수는 상대 비율 근사';
+ d.walls.push({id:'bow-worktop-backing',a:[478,363],b:[478,443],height:2.55,thickness:.16,room:'bow',evidence:'체험마루 옆 통로 VR: 긴 작업대 뒤 실벽. 체험마루 벽 쪽이 아닌 중앙 구조 쪽에 배치. 좌표는 근사'});
+ d.unresolved=d.unresolved.filter(s=>!s.includes('전시품·전시대'));
+ d.unresolved.push('전시대·입구 책상·활 모양 천장·동선 아치를 추가. 전시품과 인쇄물은 제외. 위치·곡률·개수는 관찰에 따른 근사이며 실측 복제는 아님');
+})();
+
