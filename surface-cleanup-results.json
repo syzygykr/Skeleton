@@ -1,0 +1,50 @@
+[
+  {
+    "name": "full",
+    "before": 862,
+    "after": 13,
+    "significant": 0,
+    "trimmed": 1753,
+    "removedArea": 247.89380778428492
+  },
+  {
+    "name": "ceilings",
+    "before": 887,
+    "after": 13,
+    "significant": 0,
+    "trimmed": 1770,
+    "removedArea": 253.38740871325896
+  },
+  {
+    "name": "low",
+    "before": 772,
+    "after": 13,
+    "significant": 0,
+    "trimmed": 1655,
+    "removedArea": 160.49815422480123
+  },
+  {
+    "name": "walls-hidden",
+    "before": 321,
+    "after": 4,
+    "significant": 0,
+    "trimmed": 689,
+    "removedArea": 72.20379383608977
+  },
+  {
+    "name": "structure-hidden",
+    "before": 850,
+    "after": 12,
+    "significant": 0,
+    "trimmed": 1731,
+    "removedArea": 250.499108713259
+  },
+  {
+    "name": "gallery",
+    "before": 273,
+    "after": 7,
+    "significant": 0,
+    "trimmed": 583,
+    "removedArea": 107.96056599828303
+  }
+]

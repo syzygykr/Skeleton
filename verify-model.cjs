@@ -3,6 +3,23 @@ const ctx={window:{}};vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(path.join(__dirname,'layout.js'),'utf8'),ctx);ctx.MuseumLayout=ctx.window.MuseumLayout;
 vm.runInContext(fs.readFileSync(path.join(__dirname,'details.js'),'utf8'),ctx);vm.runInContext(fs.readFileSync(path.join(__dirname,'geometry.js'),'utf8'),ctx);
 const data=ctx.MuseumLayout,model=ctx.window.MuseumGeometry.build(),ids=new Set();
+const immersivePolygon=data.rooms.find(r=>r.id==='immersive').polygon;
+assert.equal(immersivePolygon.length,4,'Immersive room must be rectangular');
+assert.equal(data.shell.find(w=>w.id==='shell-projection').a[0],1056,'Expanded projection wall');
+assert(data.floor.polygon.some(p=>p[0]===1056&&p[1]===24),'Expanded immersive floor corner');
+assert.deepEqual(Array.from(data.shell.find(w=>w.id==='shell-east-door').b),[1120,256]);
+assert(!data.floor.polygon.some(p=>p[0]===980&&p[1]===414),'Removed rear pocket remains in floor');
+assert.equal(data.wallCases.length,2,'Only two outer end-wall hanging cases');
+const archCase=data.displays.find(d=>d.id==='arch-corridor-case');
+assert(archCase&&archCase.type==='low'&&archCase.size[1]===.85,'Arch case must have floor-standing timber base and low glazing');
+assert(!data.wallCases.some(w=>w.id==='gallery-hanging-case-548'),'No cabinet on middle wall');
+for(const t of data.galleryTables){
+ for(const endpoint of [t.a,t.b]){
+  const wall=data.walls.find(w=>w.id.startsWith('gallery-display-pier-')&&Math.abs(Math.abs(w.a[0]-endpoint[0])*data.scale-w.thickness/2)<1e-8);
+  assert(wall,'Table ends must meet perpendicular walls');
+  assert.equal((t.b[0]-t.a[0])*(wall.b[0]-wall.a[0])+(t.b[1]-t.a[1])*(wall.b[1]-wall.a[1]),0,'Wall must be perpendicular to table');
+ }
+}
 for(const p of model.parts){assert(!ids.has(p.id),'Duplicate '+p.id);ids.add(p.id);assert([...p.position,...p.size,p.yaw].every(Number.isFinite),p.id);assert(p.size.every(v=>v>0),p.id);}
 for(const f of model.floors){
   assert.equal(f.mesh.idx.length/3,f.polygon.length-2,f.id);
@@ -60,7 +77,9 @@ for(let x=175;x<=235;x+=2){
  }
 }
 const northGlass=data.frames.find(f=>f.id==='entrance-glass-north'),southGlass=data.frames.find(f=>f.id==='entrance-glass-south');
-assert.equal(northGlass.a[1],318);assert.equal(southGlass.b[1],496);assert.equal(northGlass.b[1],clear.doorA[1]);assert.equal(southGlass.a[1],clear.doorB[1]);
+assert.equal(northGlass.a[1],318);assert(southGlass.b[1]<496);assert.equal(northGlass.b[1],clear.doorA[1]);assert.equal(southGlass.a[1],clear.doorB[1]);
+const endPost=model.parts.find(p=>p.id==='entrance-glass-south-post-3');
+assert(endPost.position[2]+endPost.size[2]/2<=ctx.window.MuseumGeometry.point([205,496])[1]-data.wallThickness+1e-8,'Entrance frame protrudes through south wall');
 const counter=data.detailBoxes.find(p=>p.id==='reception-top');
 assert(counter.at[1]-counter.size[2]/data.scale/2>clear.doorB[1],'Counter must be south of entrance');
 assert(!data.niches.some(p=>p.id==='bow-arrow-wall'),'Remove user-marked structure 3');
@@ -75,6 +94,13 @@ function overlap(a,b){for(const yaw of [a.yaw,b.yaw])for(const axis of [[Math.co
  if(Math.abs(axis[0]*(a.position[0]-b.position[0])+axis[1]*(a.position[2]-b.position[2]))>projection(a)+projection(b)+1e-5)return false;
 }return true;}
 const walls=[...data.shell,...data.walls];
+const maruCorner=model.parts.find(p=>p.junction?.[0]===552&&p.junction[1]===480);
+assert(maruCorner.position[0]+maruCorner.size[0]/2<=ctx.window.MuseumGeometry.point([552,480])[0]+1e-8,'Maru/bow corner protrudes past straight facade');
+for(const id of ['donated-west-upper','donated-west-jog-a','donated-west-jog-b','donated-west-shoulder']){
+ const w=data.shell.find(w=>w.id===id),dx=w.b[0]-w.a[0],dz=w.b[1]-w.a[1];
+ assert(Math.abs(w.inset[0]*dx+w.inset[1]*dz)<1e-8,'Rear outline thickness must be perpendicular');
+ assert(w.inset[0]*(-dz)+w.inset[1]*dx>0,'Rear wall must lie inside outline');
+}
 assert.equal(data.galleryTables.length,2,'Only two timber tables remain');
 assert(!data.galleryTables.some(t=>t.id==='gallery-table-3'),'Remove rightmost timber table');
 assert(data.rooms.some(r=>r.id==='immersive'),'Separate immersive room');

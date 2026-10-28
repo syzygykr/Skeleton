@@ -9,8 +9,8 @@ c.setView({target:[0,.5,0],yaw:0,pitch:.4,distance:20});const target=[...c.state
 press('KeyW');press('ArrowUp');const still=[...c.state.target];step(120);release('ArrowUp');assert(equal(c.state.target,still),'Rotation priority');assert.equal(c.state.orthographic,true);release('KeyW');
 press('ArrowDown');c.update(1e-8);release('ArrowDown');assert.equal(c.state.orthographic,false);
 c.setMode('interior');assert.equal(c.state.pitch,0);assert.equal(c.state.orthographic,false);assert.equal(c.camera().eye[1],1.575);const indoorEye=c.camera().eye;
-press('ArrowRight');step(150);release('ArrowRight');press('ArrowUp');step(180);release('ArrowUp');assert(equal(c.camera().eye,indoorEye),'Interior rotation is stationary');assert.equal(c.state.pitch,-Math.PI/3,'Look up limit');assert.equal(c.state.orthographic,false,'Interior always perspective');
-press('ArrowDown');step(180);release('ArrowDown');assert.equal(c.state.pitch,Math.PI/3,'Look down limit');assert.equal(c.state.orthographic,false);
+press('ArrowRight');step(150);release('ArrowRight');press('ArrowUp');step(180);release('ArrowUp');assert(equal(c.camera().eye,indoorEye),'Interior rotation is stationary');assert.equal(c.state.pitch,-Math.PI/4,'Look up limit');assert.equal(c.state.orthographic,false,'Interior always perspective');
+press('ArrowDown');step(180);release('ArrowDown');assert.equal(c.state.pitch,Math.PI/4,'Look down limit');assert.equal(c.state.orthographic,false);
 const beforeZoom=c.camera().eye;canvas.fire('wheel',{deltaY:-100,deltaMode:0});assert(equal(c.camera().eye,beforeZoom),'Indoor zoom cannot pass walls');assert(c.state.fov<45);
 const p=win.MuseumGeometry.point([860,320]);c.setMode('interior',[p[0],1.575,p[1]]);c.state.yaw=Math.PI/2;press('KeyW');step(600);release('KeyW');assert(c.camera().eye[0]>win.MuseumGeometry.point([840,320])[0],'Actual wall blocks interior motion');
 const open=win.MuseumGeometry.point([900,240]);c.setMode('interior',[open[0],1.575,open[1]]);c.state.yaw=Math.PI;press('KeyW');step(90);release('KeyW');assert(c.camera().eye[2]>win.MuseumGeometry.point([900,256])[1],'Open doorway permits passage');
@@ -22,7 +22,7 @@ console.log('PASS exterior orbit/free motion, interior stationary rotation/heigh
 c.setMode('interior');c.state.pitch=.2;const yaw=c.state.yaw;press('ArrowRight');step(1);release('ArrowRight');assert(c.state.yaw<yaw,'Interior right direction');press('ArrowLeft');step(1);release('ArrowLeft');assert(Math.abs(c.state.yaw-yaw)<1e-8,'Interior left direction');
 const snapshot={eye:c.camera().eye,yaw:c.state.yaw,pitch:c.state.pitch,fov:c.state.fov};win.fire('keydown',{code:'Space'});assert.equal(c.state.mode,'exterior');win.fire('keydown',{code:'Space',repeat:true});assert.equal(c.state.mode,'exterior','Ignore autorepeat');win.fire('keydown',{code:'Space'});assert.equal(c.state.mode,'interior');assert(equal(c.camera().eye,snapshot.eye));assert.equal(c.state.yaw,snapshot.yaw);assert.equal(c.state.pitch,snapshot.pitch);assert.equal(c.state.fov,snapshot.fov);
 c.setView({target:[0,0,0]});c.setMode('interior');assert(equal(c.camera().eye,snapshot.eye),'View preset must preserve interior snapshot');
-console.log('PASS interior arrow directions, +/-60 pitch limits, always perspective, Space toggle/repeat suppression, full interior pose restoration');
+console.log('PASS interior arrow directions, +/-45 pitch limits, always perspective, Space toggle/repeat suppression, full interior pose restoration');
 
 const run=()=>{const t=new Target();t.focus=()=>{};return {t,c:win.MuseumControls(t)};};
 const straight=run();straight.c.setMode('interior',[0,1.575,0]);straight.c.state.yaw=0;straight.t.fire('keydown',{code:'KeyW'});for(let i=0;i<60;i++)straight.c.update(1/60);assert(Math.abs(straight.c.camera().eye[2]+3)<1e-8,'Interior speed must be 3 units/sec');
@@ -37,3 +37,48 @@ const model=win.MuseumGeometry.build(),all=win.MuseumCollision(model,win.MuseumL
 assert(all.blocked([table.position[0],1.575,table.position[2]]),'Actual table blocks walking beneath deck');
 const top=model.parts.find(p=>p.id==='maru-worktop');let x=0,z=0;for(let i=0;i<top.mesh.pos.length;i+=3){x+=top.mesh.pos[i];z+=top.mesh.pos[i+2];}assert(all.blocked([x/(top.mesh.pos.length/3),1.575,z/(top.mesh.pos.length/3)]),'Rounded mesh worktop collision');
 console.log('PASS low displays, real gallery table, custom worktop, spawn exclusion and overhead clearance');
+
+c.setView({target:[0,.5,0],yaw:0,pitch:.4,distance:20});
+const dragTarget=[...c.state.target];
+const pointer=(type,x,y)=>canvas.fire(type,{pointerType:'mouse',pointerId:1,button:0,clientX:x,clientY:y});
+pointer('pointerdown',100,100);pointer('pointermove',200,140);
+assert(c.state.yaw<0&&c.state.pitch>.4,'Mouse orbits target');assert(equal(c.state.target,dragTarget));
+pointer('pointerup',200,140);const ended=c.state.yaw;pointer('pointermove',300,140);assert.equal(c.state.yaw,ended);
+c.setView({target:[0,.5,0],yaw:0,pitch:Math.PI/2,distance:20});
+pointer('pointerdown',100,100);pointer('pointermove',200,200);assert.equal(c.state.pitch,Math.PI/2);assert(c.state.yaw<0);assert(c.state.orthographic);
+pointer('pointercancel',200,200);const cancelled=c.state.yaw;pointer('pointermove',300,200);assert.equal(c.state.yaw,cancelled);
+// Drag into top view, release, then start a new drag back into perspective.
+c.setView({target:[0,.5,0],yaw:0,pitch:1.4,distance:20});
+pointer('pointerdown',100,100);pointer('pointermove',100,300);assert(c.state.orthographic);
+pointer('pointerup',100,300);const topScale=c.state.halfHeight;
+pointer('pointerdown',100,300);pointer('pointermove',100,250);
+assert(c.state.pitch<Math.PI/2&&!c.state.orthographic,'New drag must leave top view');
+assert(Math.abs(c.state.distance*Math.tan(c.state.fov*Math.PI/360)-topScale)<1e-8,'Projection scale continuity');
+pointer('pointerup',100,250);
+c.setMode('interior');const indoorYaw=c.state.yaw,mouseEye=c.camera().eye;
+doc.fire('mousemove',{movementX:100,movementY:100});assert.equal(c.state.yaw,indoorYaw,'Unlocked mouse does not rotate');
+doc.pointerLockElement=canvas;
+doc.fire('mousemove',{movementX:100,movementY:100});assert(c.state.yaw<indoorYaw,'FPS mouse right looks right');
+assert(equal(c.camera().eye,mouseEye),'Interior mouse rotation keeps position');
+doc.fire('mousemove',{movementY:-10000});assert.equal(c.state.pitch,-Math.PI/4);
+doc.fire('mousemove',{movementY:10000});assert.equal(c.state.pitch,Math.PI/4);assert(!c.state.orthographic);
+doc.pointerLockElement=null;doc.fire('pointerlockchange');const unlockedYaw=c.state.yaw;
+doc.fire('mousemove',{movementX:100});assert.equal(c.state.yaw,unlockedYaw);
+console.log('PASS exterior mouse orbit, pointer release/cancel, FPS locked mouse, release and +/-45 limits');
+
+const world=(x,z)=>{const p=win.MuseumGeometry.point([x,z]);return [p[0],win.MuseumLayout.eyeHeight,p[1]];};
+const terraceCollision=win.MuseumCollision(win.MuseumGeometry.build(),win.MuseumLayout);
+const portalWall=win.MuseumLayout.shell.find(w=>w.id==='shell-bow-south'),portalOpening=portalWall.openings[0];
+const portalX=portalWall.a[0]+(portalWall.b[0]-portalWall.a[0])*(portalOpening.from+portalOpening.to)/2;
+assert.equal(portalOpening.kind,'opening');
+assert(equal(terraceCollision.move(world(portalX,488),world(portalX,515)),world(portalX,515)),'Outdoor portal exit');
+assert(equal(terraceCollision.move(world(portalX,515),world(portalX,488)),world(portalX,488)),'Outdoor portal return');
+assert(equal(terraceCollision.spawn(world(850,540)),world(850,540)),'Outdoor spawn stays outdoors');
+for(const w of win.MuseumLayout.walls.filter(w=>w.id.startsWith('outdoor-boundary-'))){
+ assert.equal(w.height,win.MuseumLayout.eyeHeight*.4);
+ const x=(w.a[0]+w.b[0])/2,z=(w.a[1]+w.b[1])/2,vertical=w.a[0]===w.b[0];
+ const a=world(x+(vertical?15:0),z+(vertical?0:15)),b=world(x-(vertical?15:0),z-(vertical?0:15));
+ assert(!equal(terraceCollision.move(a,b),b),'Low boundary must block '+w.id);
+ assert(!equal(terraceCollision.move(b,a),a),'Low boundary must block reverse '+w.id);
+}
+console.log('PASS outdoor portal both directions, outdoor spawn, 0.4-eye-height perimeter collisions');

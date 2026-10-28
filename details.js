@@ -114,6 +114,70 @@
  d.niches.find(n=>n.id==='gallery-tall-wall-3').room='immersive';
  d.shell.find(w=>w.id==='shell-projection').room='immersive';
  d.immersiveBounds={west:818,north:24,south:175,eastReturn:1056};
+ // 사용자 빨간 선: 북동측 빈 꺾임을 채워 체험장 전체를 직사각형으로 확장.
+ d.shell.find(w=>w.id==='shell-north').b=[1056,24];
+ Object.assign(d.shell.find(w=>w.id==='shell-projection'),{a:[1056,24],b:[1056,118],evidence:'사용자 공간 확장 지시: 직사각 체험장 동측 투사벽으로 이동'});
+ d.shell.find(w=>w.id==='shell-northeast-return').a=[1056,118];
+ for(const polygon of [d.floor.polygon,d.envelope])for(const p of polygon){
+  if(p[0]===970&&(p[1]===24||p[1]===118))p[0]=1056;
+ }
+ const immersive=d.rooms.find(r=>r.id==='immersive');
+ immersive.polygon=[[818,24],[1056,24],[1056,175],[818,175]];
+ immersive.note='사용자 빨간 선에 따라 북동측 빈 부분을 확장한 직사각형 체험장. 서측 출입구와 전면 전시 홈 유지';
+ // 복도 끝과 기증전시실 사이 12px 틈을 닫고 그 뒤 좁은 잔여 바닥을 제거한다.
+ d.shell.find(w=>w.id==='shell-east-door').b=[1120,256];
+ Object.assign(d.shell.find(w=>w.id==='shell-east-step'),{a:[1120,256],b:[1145,256]});
+ d.shell.find(w=>w.id==='shell-donated-east').a=[1145,256];
+ for(const polygon of [d.floor.polygon,d.envelope])for(const p of polygon){
+  if((p[0]===1120||p[0]===1145)&&p[1]===244)p[1]=256;
+ }
+ // 회전한 전시실의 꺾인 후면을 실제 외곽으로 사용해, 뒤의 닫힌 주머니 공간도 없앤다.
+ const backWalls=['donated-west-shoulder','donated-west-jog-b','donated-west-jog-a','donated-west-upper'].map(id=>d.walls.find(w=>w.id===id));
+ const southIndex=d.shell.findIndex(w=>w.id==='shell-donated-south');
+ const backBoundary=backWalls.map(w=>({...w,a:[...w.b],b:[...w.a]}));
+ const backEnd=backBoundary[backBoundary.length-1].b;
+ d.shell.splice(southIndex,2,
+  {id:'shell-donated-south',a:[1145,414],b:[...backBoundary[0].a],inset:[0,-1],room:'donated'},
+  ...backBoundary,
+  {id:'shell-donated-step',a:[...backEnd],b:[980,394],inset:[-1,0],room:'planned'});
+ d.walls=d.walls.filter(w=>!backWalls.includes(w));
+ d.envelope=d.shell.map(w=>[...w.a]);
+ const floorStart=d.floor.polygon.findIndex(p=>p[0]===1145&&p[1]===414);
+ d.floor.polygon.splice(floorStart+1,1,...backBoundary.map(w=>[...w.a]),[...backEnd]);
+ d.walls.find(w=>w.id==='gallery-transition').thickness=.44;
+ // 아치 옆 사진은 벽걸이 함이 아니라 바닥에 닿는 목재 하부장 + 낮은 상부 유리장.
+ d.wallCases=[];
+ d.displays.push({id:'arch-corridor-case',at:[400-(.22+.30)/d.scale,280],size:[.60,.85,38*d.scale],type:'low',room:'long',evidence:'사용자 근접 사진 정정: 바닥부터 목재 하부장, 밝은 상판 위 낮은 유리 진열부. 벽걸이 형태 아님'});
+ // 테이블 진행 방향(X)에 수직인 벽(Z). 가운데 벽에는 장을 달지 않는다.
+ for(const x of [400,548,690]){
+  d.walls.push({id:'gallery-display-pier-'+x,a:[x,155],b:[x,195],thickness:.44,height:2.8,room:'long',evidence:'사용자 정정: 목재 테이블의 진행방향에 수직인 벽. 가운데 벽에는 전시대 없음'});
+  if(x!==548){
+   const side=x===400?-1:1,face=x+side*.22/d.scale;
+   d.wallCases.push({id:'gallery-hanging-case-'+x,a:[face,160],b:[face,190],inward:[side,0],depth:.38,bottom:.65,top:2.20,room:'long'});
+  }
+ }
+ Object.assign(d.galleryTables[0],{a:[400+.22/d.scale,175],b:[548-.22/d.scale,175]});
+ Object.assign(d.galleryTables[1],{a:[548+.22/d.scale,175],b:[690-.22/d.scale,175]});
+ // 외피는 항상 경계 안쪽으로 두께를 두어 꺾인 구간의 바깥면을 일치시킨다.
+ for(const w of d.shell){const dx=w.b[0]-w.a[0],dz=w.b[1]-w.a[1],len=Math.hypot(dx,dz);w.inset=[-dz/len,dx/len];}
+ d.walls.find(w=>w.id==='maru-west').inset=[-1,0];
+ d.walls.find(w=>w.id==='planned-east').inset=[-1,0];
+ d.walls.find(w=>w.id==='planned-entry').inset=[0,-1];
+ // 남측 외벽의 실내 면에서 끝내어 전실 프레임이 외벽을 관통하지 않게 한다.
+ d.frames.find(f=>f.id==='entrance-glass-south').b=[205,496-(d.wallThickness+.055)/d.scale];
+ d.walls.find(w=>w.id==='entrance-transom').b=[205,496-d.wallThickness/d.scale];
+ // 사용자 빨간 테두리: 체험마루 남측을 따라 넓힌 야외 마당과 낮은 경계벽.
+ d.eyeHeight=1.575;
+ const terrace=d.rooms.find(r=>r.id==='outdoor');
+ terrace.name='야외체험장';
+ terrace.polygon=[[492,496],[552,496],[552,480],[900,480],[900,584],[492,584]];
+ terrace.note='사용자 지정 확장 마당. 열린 서측 쪽문으로 출입하며 높이 0.63의 경계벽은 통과할 수 없음';
+ const terraceStart=d.floor.polygon.findIndex(p=>p[0]===790&&p[1]===480);
+ const terraceEnd=d.floor.polygon.findIndex(p=>p[0]===492&&p[1]===496);
+ d.floor.polygon.splice(terraceStart+1,terraceEnd-terraceStart,[900,480],[900,584],[492,584],[492,496]);
+ const boundary=[[492,496],[492,584],[900,584],[900,480],[790,480]];
+ for(let i=0;i<boundary.length-1;i++)d.walls.push({id:'outdoor-boundary-'+i,a:boundary[i],b:boundary[i+1],height:d.eyeHeight*.4,thickness:.16,room:'outdoor',evidence:'사용자 빨간 테두리: 카메라 높이 0.4배의 통과 불가능한 낮은 경계벽'});
+ Object.assign(d.shell.find(w=>w.id==='shell-bow-south').openings[0],{kind:'opening',note:'사용자 체크한 쪽문: 유리 없이 야외로 걸어서 통과'});
  d.unresolved=d.unresolved.filter(s=>!s.includes('전시품·전시대'));
  d.unresolved.push('전시대·입구 책상·활 모양 천장·동선 아치를 추가. 전시품과 인쇄물은 제외. 위치·곡률·개수는 관찰에 따른 근사이며 실측 복제는 아님');
 })();

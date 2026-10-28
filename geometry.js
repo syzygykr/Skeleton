@@ -75,9 +75,16 @@ window.MuseumGeometry = (()=>{
     }
     let joint=0;
     for(const {at,walls} of wallEnds.values())if(walls.length>1){
-      const p=point(at),t=Math.max(...walls.map(w=>w.thickness||data.wallThickness)),low=Math.max(...walls.map(w=>w.bottom||0)),high=Math.min(...walls.map(w=>w.height||data.wallHeight));
-      const offsets=[0,1].map(i=>{const values=walls.map(w=>(w.inset?.[i]||0)*(w.thickness||data.wallThickness)/2);return Math.max(...values)+Math.min(...values);});
-      if(high>low)parts.push({id:'wall-joint-'+joint++,position:[p[0]+offsets[0],(low+high)/2,p[1]+offsets[1]],size:[t+.002,high-low,t+.002],yaw:0,color:wallColor,group:'wall',room:walls[0].room,junction:at});
+      const p=point(at),low=Math.max(...walls.map(w=>w.bottom||0)),high=Math.min(...walls.map(w=>w.height||data.wallHeight));
+      const vertical=walls.filter(w=>w.a[0]===w.b[0]),horizontal=walls.filter(w=>w.a[1]===w.b[1]);
+      // 일직선 접합에는 보강 상자를 두지 않고 직각부는 각 벽 두께의 교차 범위만 메운다.
+      if(!vertical.length||!horizontal.length)continue;
+      const bounds=(list,axis)=>{
+        const ranges=list.map(w=>{const t=w.thickness||data.wallThickness,c=p[axis]+(w.inset?.[axis]||0)*t/2;return [c-t/2,c+t/2];});
+        return [Math.min(...ranges.map(r=>r[0])),Math.max(...ranges.map(r=>r[1]))];
+      };
+      const x=bounds(vertical,0),z=bounds(horizontal,1);
+      if(high>low)parts.push({id:'wall-joint-'+joint++,position:[(x[0]+x[1])/2,(low+high)/2,(z[0]+z[1])/2],size:[x[1]-x[0],high-low,z[1]-z[0]],yaw:0,color:wallColor,group:'wall',room:walls[0].room,junction:at});
     }
     for(const f of data.frames){
       const inset=f.inset||[0,0],a=point(f.a).map((v,i)=>v+inset[i]*.07),b=point(f.b).map((v,i)=>v+inset[i]*.07),n=f.divisions||1;
@@ -139,6 +146,16 @@ window.MuseumGeometry = (()=>{
       span(t.id+'-apron',a,b,t.height-.22,t.height-.14,t.depth-.10,[.37,.23,.14],'displays',t.room);
       parts.push({id:t.id+'-pedestal',position:[center[0],(t.height-.22)/2,center[1]],size:[.55,t.height-.22,.48],yaw,color:[.34,.23,.16],group:'displays',room:t.room});
       parts.push({id:t.id+'-foot',position:[center[0],.035,center[1]],size:[.63,.07,.56],yaw,color:[.21,.22,.20],group:'displays',room:t.room});
+    }
+    // 바닥까지 내려오지 않는 목재 벽걸이 진열장: 불투명 목재 함체와 전면 유리.
+    for(const n of data.wallCases||[]){
+      const a=point(n.a),b=point(n.b),len=Math.hypot(b[0]-a[0],b[1]-a[1]),at=t=>a.map((v,i)=>v+(b[i]-v)*t),off=(p,d)=>p.map((v,i)=>v+n.inward[i]*d),midA=off(a,n.depth/2),midB=off(b,n.depth/2),frontA=off(a,n.depth),frontB=off(b,n.depth);
+      span(n.id+'-back',a,b,n.bottom,n.top,.055,wood,'displays',n.room);
+      span(n.id+'-sill',midA,midB,n.bottom,n.bottom+.09,n.depth,wood,'displays',n.room);
+      span(n.id+'-header',midA,midB,n.top-.09,n.top,n.depth,wood,'displays',n.room);
+      span(n.id+'-left',midA,off(at(.08/len),n.depth/2),n.bottom,n.top,n.depth,wood,'displays',n.room);
+      span(n.id+'-right',off(at(1-.08/len),n.depth/2),midB,n.bottom,n.top,n.depth,wood,'displays',n.room);
+      span(n.id+'-glass',frontA,frontB,n.bottom+.09,n.top-.09,.018,[.62,.78,.79],'displayGlass',n.room);parts[parts.length-1].alpha=.16;
     }
     for(const n of data.niches||[]){
       const a=point(n.a),b=point(n.b),len=Math.hypot(b[0]-a[0],b[1]-a[1]),at=t=>a.map((v,i)=>v+(b[i]-v)*t),offset=(p,d)=>p.map((v,i)=>v+n.inward[i]*d),midA=offset(a,n.depth/2),midB=offset(b,n.depth/2),faceA=offset(a,n.depth),faceB=offset(b,n.depth),h=data.wallHeight;

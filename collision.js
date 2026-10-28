@@ -36,7 +36,7 @@ window.MuseumCollision=function(model,layout){
    remaining=remaining.map(v=>v*(1-t));const dot=remaining.reduce((s,v,i)=>s+v*nearest.normal[i],0);if(dot<0)remaining=remaining.map((v,i)=>v-dot*nearest.normal[i]);
   }return pos;
  }
- function inside(p){const v=layout.envelope.map(MuseumGeometry.point);let yes=false;for(let i=0,j=v.length-1;i<v.length;j=i++){if((v[i][1]>p[2])!==(v[j][1]>p[2])&&p[0]<(v[j][0]-v[i][0])*(p[2]-v[i][1])/(v[j][1]-v[i][1])+v[i][0])yes=!yes;}return yes;}
+ function inside(p){const v=(layout.floor?.polygon||layout.envelope).map(MuseumGeometry.point);let yes=false;for(let i=0,j=v.length-1;i<v.length;j=i++){if((v[i][1]>p[2])!==(v[j][1]>p[2])&&p[0]<(v[j][0]-v[i][0])*(p[2]-v[i][1])/(v[j][1]-v[i][1])+v[i][0])yes=!yes;}return yes;}
  function spawn(wanted){if(inside(wanted)&&!blocked(wanted))return [...wanted];for(let r=.2;r<40;r+=.2)for(let i=0;i<32;i++){const p=[wanted[0]+r*Math.cos(i*Math.PI/16),wanted[1],wanted[2]+r*Math.sin(i*Math.PI/16)];if(inside(p)&&!blocked(p))return p;}throw Error('진입 가능한 실내 위치를 찾지 못했습니다.');}
  return {move,spawn,blocked};
 };

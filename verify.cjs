@@ -33,6 +33,8 @@ async function main(){
     await page.keyboard.press('Space');
     const restored=await page.evaluate(()=>({mode:MuseumViewer.controls.state.mode,eye:MuseumViewer.controls.camera().eye,yaw:MuseumViewer.controls.state.yaw,pitch:MuseumViewer.controls.state.pitch}));
     if(restored.mode!=='interior'||restored.eye.some((v,i)=>Math.abs(v-savedPose.eye[i])>1e-8)||restored.yaw!==savedPose.yaw||restored.pitch!==savedPose.pitch)throw Error('Space pose restoration');
+    // FPS의 커서 잠금 중에는 외부 UI를 클릭할 수 없으므로 먼저 Space로 해제한다.
+    await page.keyboard.press('Space');await page.waitForFunction(()=>!document.pointerLockElement);
     await page.locator('[data-mode="exterior"]').click();
     if(await page.evaluate(()=>MuseumViewer.controls.state.mode)!=='exterior')throw Error('Exterior mode restore');
     const info=await page.evaluate(()=>({floors:MuseumViewer.model.floors.filter(f=>f.group==='floor').length,ceilings:MuseumViewer.model.floors.filter(f=>f.group==='ceiling').length,parts:MuseumViewer.model.parts.length,glError:MuseumViewer.gl.getError()}));

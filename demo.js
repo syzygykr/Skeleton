@@ -272,20 +272,24 @@
   // 위치/법선/UV/인덱스를 VAO 로 묶는다 (location 0,1,2)
   function upload(gl, m) {
     const vao = gl.createVertexArray();
+    const buffers = [];
     gl.bindVertexArray(vao);
     [['pos', 3, 0], ['nrm', 3, 1], ['uv', 2, 2], ['col', 3, 3]].forEach(function (a) {
       if (!m[a[0]]) return;
       const b = gl.createBuffer();
+      buffers.push(b);
       gl.bindBuffer(gl.ARRAY_BUFFER, b);
       gl.bufferData(gl.ARRAY_BUFFER, m[a[0]], gl.STATIC_DRAW);
       gl.enableVertexAttribArray(a[2]);
       gl.vertexAttribPointer(a[2], a[1], gl.FLOAT, false, 0, 0);
     });
     const ib = gl.createBuffer();
+    buffers.push(ib);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, m.idx, gl.STATIC_DRAW);
     gl.bindVertexArray(null);
-    return { vao: vao, count: m.idx.length, verts: m.pos.length / 3 };
+    return { vao: vao, count: m.idx.length, verts: m.pos.length / 3,
+      dispose: function () { buffers.forEach(b=>gl.deleteBuffer(b)); gl.deleteVertexArray(vao); } };
   }
 
   /* ---------------- 4x4 행렬 (열 우선) ---------------- */
