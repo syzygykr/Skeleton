@@ -2,9 +2,13 @@ const {chromium}=require(process.env.PLAYWRIGHT_PATH||'playwright'),{pathToFileU
 (async()=>{
  const b=await chromium.launch({channel:'msedge',headless:true,args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  try{
-  for(const mobile of [false,true]){
+  for(const profile of ['desktop','mobile','tablet-mouse']){
+   const mobile=profile!=='desktop';
    const ctx=await b.newContext({isMobile:mobile,hasTouch:mobile,viewport:{width:1440,height:960}}),p=await ctx.newPage(),errors=[];
-   p.on('pageerror',e=>errors.push(e.message));await p.goto(pathToFileURL(path.join(__dirname,'index.html')).href);await p.waitForFunction(()=>window.MuseumViewer?.surfaceStats);
+   p.on('pageerror',e=>errors.push(e.message));
+   await p.addInitScript(touch=>Object.defineProperty(navigator,'maxTouchPoints',{get:()=>touch,configurable:true}),mobile?5:0);
+   if(profile!=='mobile')await p.addInitScript(()=>{const original=window.matchMedia.bind(window);window.matchMedia=q=>{const result=original(q);if(q==='(pointer: coarse)'||q==='(any-pointer: coarse)')return new Proxy(result,{get:(t,k)=>k==='matches'?false:typeof t[k]==='function'?t[k].bind(t):t[k]});return result;};});
+   await p.goto(pathToFileURL(path.join(__dirname,'index.html')).href);await p.waitForFunction(()=>window.MuseumViewer?.surfaceStats);
    for(const [width,height] of [[1440,960],[1920,1080],[768,1024],[390,844],[844,390],[320,568]]){
     await p.setViewportSize({width,height});await p.evaluate(()=>new Promise(requestAnimationFrame));
     const layout=await p.evaluate(()=>{const stage=document.querySelector('.stage').getBoundingClientRect(),panel=document.querySelector('aside').getBoundingClientRect();return {ratio:panel.width/innerWidth,stage:stage.width/innerWidth,right:panel.right,left:panel.left,stageRight:stage.right,top:panel.top,bottom:panel.bottom,overflow:document.documentElement.scrollWidth>innerWidth||document.documentElement.scrollHeight>innerHeight,buttons:[...document.querySelectorAll('.mode-nav button')].map(b=>{const r=b.getBoundingClientRect();return {left:r.left,right:r.right,height:r.height};})};});
@@ -25,6 +29,6 @@ const {chromium}=require(process.env.PLAYWRIGHT_PATH||'playwright'),{pathToFileU
     if((mobile&&width===390)||(!mobile&&width===1440))await p.screenshot({path:path.join(__dirname,mobile?'preview-layout-mobile.png':'preview-layout-pc.png')});
    }
    assert.deepEqual(errors,[]);assert.equal(await p.evaluate(()=>MuseumViewer.gl.getError()),0);await ctx.close();
-  }console.log('PASS 75:25 desktop/mobile layout at 6 viewport sizes, right alignment, mobile panel hide/restore and stable camera, button bounds, no page overflow or WebGL errors');
+  }console.log('PASS 75:25 desktop/mobile/tablet-with-mouse layout at 6 viewport sizes, right alignment, mobile panel hide/restore and stable camera, button bounds, no page overflow or WebGL errors');
  }finally{await b.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

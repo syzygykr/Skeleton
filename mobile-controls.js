@@ -1,6 +1,8 @@
 /* 모바일 입력 전용. 카메라·충돌은 controls.input 공통 인터페이스를 사용한다. */
 window.MuseumMobileControls=function(canvas,controls,options={}){
- const media=matchMedia('(pointer: coarse)'),touches=new Map();
+ const media=matchMedia('(any-pointer: coarse)'),touches=new Map();
+ // 태블릿의 데스크톱 모드·마우스 연결 여부와 무관하게 터치 지원을 확인한다.
+ const touchDevice=()=>media.matches||(navigator.maxTouchPoints||0)>0;
  let pair=null,stick=null,axes=[0,0],revision=controls.state.revision;
  const root=document.createElement('div');root.className='mobile-hud';root.innerHTML=`
   <div class="mobile-stick" role="group" aria-label="이동 조이스틱"><span class="stick-label">이동</span><span class="stick-knob"></span></div>
@@ -12,7 +14,7 @@ window.MuseumMobileControls=function(canvas,controls,options={}){
  panelToggle.setAttribute('aria-controls',panel.id);document.body.append(panelToggle);
  let panelClosed=false;
  function syncPanel(){
-  const hidden=media.matches&&panelClosed;
+  const hidden=touchDevice()&&panelClosed;
   document.body.classList.toggle('panel-hidden',hidden);
   panel.inert=hidden;panel.setAttribute('aria-hidden',String(hidden));
   panelToggle.setAttribute('aria-expanded',String(!hidden));
@@ -23,7 +25,7 @@ window.MuseumMobileControls=function(canvas,controls,options={}){
  const release=(target,id)=>{try{if(target.hasPointerCapture(id))target.releasePointerCapture(id);}catch{}};
  function reset(){for(const id of touches.keys())release(canvas,id);touches.clear();pair=null;if(stick!==null)release(joystick,stick);stick=null;axes=[0,0];knob.style.transform='translate(0px,0px)';}
  function sync(){joystick.hidden=controls.state.mode!=='interior';}
- function configure(){reset();document.body.classList.toggle('mobile-input',media.matches);sync();syncPanel();}
+ function configure(){reset();document.body.classList.toggle('mobile-input',touchDevice());sync();syncPanel();}
  for(const [name,delta] of [['in',-.15],['out',.15]])root.querySelector(`[data-touch="${name}"]`).addEventListener('click',()=>{controls.input.zoom(delta);});
  const snapshot=()=>{const p=[...touches.values()];return p.length===2?{x:(p[0].x+p[1].x)/2,y:(p[0].y+p[1].y)/2,d:Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y)}:null;};
  canvas.addEventListener('pointerdown',e=>{
@@ -50,6 +52,6 @@ window.MuseumMobileControls=function(canvas,controls,options={}){
  const endStick=e=>{if(e.pointerId===stick){const id=stick;stick=null;axes=[0,0];knob.style.transform='translate(0px,0px)';release(joystick,id);}};
  for(const event of ['pointerup','pointercancel','lostpointercapture'])joystick.addEventListener(event,endStick);
  window.addEventListener('blur',reset);window.addEventListener('resize',reset);window.addEventListener('orientationchange',reset);document.addEventListener('visibilitychange',()=>{if(document.hidden)reset();});media.addEventListener('change',configure);configure();
- function update(dt){if(revision!==controls.state.revision){reset();revision=controls.state.revision;sync();}if(!media.matches)return;controls.input.moveAxes(axes[0],axes[1],dt);}
+ function update(dt){if(revision!==controls.state.revision){reset();revision=controls.state.revision;sync();}if(!touchDevice())return;controls.input.moveAxes(axes[0],axes[1],dt);}
  return {update,reset};
 };
