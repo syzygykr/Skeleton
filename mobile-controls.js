@@ -7,10 +7,23 @@ window.MuseumMobileControls=function(canvas,controls,options={}){
   <div class="mobile-zoom"><button type="button" data-touch="in" aria-label="확대">＋</button><button type="button" data-touch="out" aria-label="축소">−</button></div>
   `;
  canvas.parentElement.append(root);const joystick=root.querySelector('.mobile-stick'),knob=root.querySelector('.stick-knob');
+ const panel=document.querySelector('aside'),panelToggle=document.createElement('button');
+ panel.id='options-panel';panelToggle.type='button';panelToggle.className='mobile-panel-toggle';
+ panelToggle.setAttribute('aria-controls',panel.id);document.body.append(panelToggle);
+ let panelClosed=false;
+ function syncPanel(){
+  const hidden=media.matches&&panelClosed;
+  document.body.classList.toggle('panel-hidden',hidden);
+  panel.inert=hidden;panel.setAttribute('aria-hidden',String(hidden));
+  panelToggle.setAttribute('aria-expanded',String(!hidden));
+  panelToggle.setAttribute('aria-label',hidden?'패널 열기':'패널 숨기기');
+  panelToggle.title=hidden?'패널 열기':'패널 숨기기';panelToggle.textContent=hidden?'‹':'›';
+ }
+ panelToggle.addEventListener('click',()=>{reset();controls.clear();panelClosed=!panelClosed;syncPanel();});
  const release=(target,id)=>{try{if(target.hasPointerCapture(id))target.releasePointerCapture(id);}catch{}};
  function reset(){for(const id of touches.keys())release(canvas,id);touches.clear();pair=null;if(stick!==null)release(joystick,stick);stick=null;axes=[0,0];knob.style.transform='translate(0px,0px)';}
  function sync(){joystick.hidden=controls.state.mode!=='interior';}
- function configure(){reset();document.body.classList.toggle('mobile-input',media.matches);sync();}
+ function configure(){reset();document.body.classList.toggle('mobile-input',media.matches);sync();syncPanel();}
  for(const [name,delta] of [['in',-.15],['out',.15]])root.querySelector(`[data-touch="${name}"]`).addEventListener('click',()=>{controls.input.zoom(delta);});
  const snapshot=()=>{const p=[...touches.values()];return p.length===2?{x:(p[0].x+p[1].x)/2,y:(p[0].y+p[1].y)/2,d:Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y)}:null;};
  canvas.addEventListener('pointerdown',e=>{
