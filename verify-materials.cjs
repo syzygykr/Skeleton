@@ -1,0 +1,9 @@
+const {chromium}=require(process.env.PLAYWRIGHT_PATH||'playwright'),{pathToFileURL}=require('url'),path=require('path'),assert=require('node:assert/strict');
+(async()=>{const b=await chromium.launch({channel:'msedge',headless:true,args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});try{
+ for(const mobile of [false,true]){
+  const context=await b.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:960},hasTouch:mobile,isMobile:mobile}),p=await context.newPage(),errors=[];p.on('pageerror',e=>errors.push(e.message));await p.goto(pathToFileURL(path.join(__dirname,'index.html')).href);await p.waitForFunction(()=>window.MuseumViewer?.woodReady);
+  const sample=async at=>{await p.evaluate(at=>{const q=MuseumGeometry.point(at);MuseumViewer.controls.setView({target:[q[0],0,q[1]],distance:15,yaw:0,pitch:Math.PI/2,orthographic:true,halfHeight:4.8});},at);return p.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>{const gl=MuseumViewer.gl,pixel=new Uint8Array(4);gl.readPixels(Math.floor(gl.drawingBufferWidth/2),Math.floor(gl.drawingBufferHeight/2),1,1,gl.RGBA,gl.UNSIGNED_BYTE,pixel);resolve(Array.from(pixel));})));};
+  const wood=await sample([650,350]),plain=await sample([910,325]);assert(wood[0]>wood[2]*1.3,'Maru must be warm wood color');assert(Math.abs(plain[0]-plain[2])<20,'Other rooms must retain neutral floor');assert.equal(await p.evaluate(()=>MuseumViewer.gl.getError()),0);
+  await p.evaluate(()=>{const q=MuseumGeometry.point([670,370]);MuseumViewer.controls.setView({target:[q[0],0,q[1]],distance:13,yaw:.12,pitch:1.18});});await p.waitForTimeout(100);await p.screenshot({path:path.join(__dirname,mobile?'preview-maru-wood-mobile.png':'preview-maru-wood.png')});assert.deepEqual(errors,[]);console.log(JSON.stringify({mobile,wood,plain,webgl:'ok',offlineTexture:'loaded'}));await context.close();
+ }
+}finally{await b.close();}})().catch(e=>{console.error(e);process.exit(1)});

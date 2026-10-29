@@ -3,21 +3,14 @@ window.MuseumMobileControls=function(canvas,controls,options={}){
  const media=matchMedia('(pointer: coarse)'),touches=new Map();
  let pair=null,stick=null,axes=[0,0],revision=controls.state.revision;
  const root=document.createElement('div');root.className='mobile-hud';root.innerHTML=`
-  <div class="mobile-toolbar"><button type="button" data-touch="mode">1인칭</button><button type="button" data-touch="home">전체</button><button type="button" data-touch="panel" aria-expanded="false" aria-controls="museum-settings">공간·설정</button></div>
   <div class="mobile-stick" role="group" aria-label="이동 조이스틱"><span class="stick-label">이동</span><span class="stick-knob"></span></div>
   <div class="mobile-zoom"><button type="button" data-touch="in" aria-label="확대">＋</button><button type="button" data-touch="out" aria-label="축소">−</button></div>
-  <p class="mobile-guide"></p>`;
- canvas.parentElement.append(root);const joystick=root.querySelector('.mobile-stick'),knob=root.querySelector('.stick-knob'),guide=root.querySelector('.mobile-guide'),mode=root.querySelector('[data-touch="mode"]'),panel=root.querySelector('[data-touch="panel"]');
- const aside=document.querySelector('aside');aside.id='museum-settings';
+  `;
+ canvas.parentElement.append(root);const joystick=root.querySelector('.mobile-stick'),knob=root.querySelector('.stick-knob');
  const release=(target,id)=>{try{if(target.hasPointerCapture(id))target.releasePointerCapture(id);}catch{}};
  function reset(){for(const id of touches.keys())release(canvas,id);touches.clear();pair=null;if(stick!==null)release(joystick,stick);stick=null;axes=[0,0];knob.style.transform='translate(0px,0px)';}
- function sync(){const inside=controls.state.mode==='interior';joystick.hidden=!inside;mode.textContent=inside?'3인칭':'1인칭';guide.textContent=inside?'왼손으로 이동 · 화면 드래그로 시선':'한 손가락 회전 · 두 손가락 이동·확대';}
- function configure(){reset();document.body.classList.toggle('mobile-input',media.matches);if(!media.matches)document.body.classList.remove('mobile-panel-open');sync();}
- const closePanel=()=>{document.body.classList.remove('mobile-panel-open');panel.setAttribute('aria-expanded','false');reset();};
- root.querySelector('[data-touch="mode"]').addEventListener('click',()=>{reset();controls.toggleMode();sync();});
- root.querySelector('[data-touch="home"]').addEventListener('click',()=>{reset();options.onHome?.();sync();});
- panel.addEventListener('click',()=>{reset();const open=document.body.classList.toggle('mobile-panel-open');panel.setAttribute('aria-expanded',String(open));});
- aside.addEventListener('click',e=>{if(e.target.closest('button'))closePanel();});
+ function sync(){joystick.hidden=controls.state.mode!=='interior';}
+ function configure(){reset();document.body.classList.toggle('mobile-input',media.matches);sync();}
  for(const [name,delta] of [['in',-.15],['out',.15]])root.querySelector(`[data-touch="${name}"]`).addEventListener('click',()=>{controls.input.zoom(delta);});
  const snapshot=()=>{const p=[...touches.values()];return p.length===2?{x:(p[0].x+p[1].x)/2,y:(p[0].y+p[1].y)/2,d:Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y)}:null;};
  canvas.addEventListener('pointerdown',e=>{

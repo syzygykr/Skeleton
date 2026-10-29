@@ -129,7 +129,8 @@ window.MuseumGeometry = (()=>{
     }
     for(const d of data.displays||[]){
       box(d.id+'-base',d.at,d.size,0,displayColor,'displays',d.room);
-      box(d.id+'-top',d.at,[d.size[0]+.04,.045,d.size[2]+.04],d.size[1],[.83,.82,.74],'displays',d.room);
+      const overhang=d.topOverhang??.04;
+      box(d.id+'-top',d.at,[d.size[0]+overhang,.045,d.size[2]+overhang],d.size[1],[.83,.82,.74],'displays',d.room);
       if(d.type!=='platform'){
         const h=d.type==='case'?1.30:.38,p=point(d.at),w=d.size[0],z=d.size[2],low=d.size[1]+.045;
         for(const [i,v] of [[0,-1],[1,1]]){

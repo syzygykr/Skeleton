@@ -82,3 +82,9 @@ for(const w of win.MuseumLayout.walls.filter(w=>w.id.startsWith('outdoor-boundar
  assert(!equal(terraceCollision.move(b,a),a),'Low boundary must block reverse '+w.id);
 }
 console.log('PASS outdoor portal both directions, outdoor spawn, 0.4-eye-height perimeter collisions');
+
+for(const room of win.MuseumLayout.rooms){
+ const wanted=world(...room.entryAt);assert(!terraceCollision.blocked(wanted),'Room entry blocked '+room.id);
+ assert(equal(terraceCollision.spawn(wanted),wanted),'Room entry relocated '+room.id);
+}
+console.log('PASS all nine room-label entry points clear of collision');

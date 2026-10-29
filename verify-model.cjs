@@ -136,6 +136,9 @@ assert.equal((data.galleryTables[0].b[0]-data.galleryTables[0].a[0])*(portal.b[0
 const turnedCase=data.niches.find(n=>n.id==='gallery-transition-display');
 assert.equal(turnedCase.a[0],405);assert.equal(turnedCase.b[0],405);assert.equal(turnedCase.inward[0],1);
 assert(data.displays.some(d=>d.id==='horse-platform'&&d.type==='platform'&&d.size[0]>4),'Missing large empty horse plinth');
+const horse=data.displays.find(d=>d.id==='horse-platform');
+assert(Math.abs((horse.at[0]-270)*data.scale-horse.size[0]/2-data.wallThickness)<1e-8,'Horse platform west wall gap');
+assert(Math.abs((horse.at[1]-24)*data.scale-horse.size[2]/2-data.wallThickness)<1e-8,'Horse platform north wall gap');
 assert(data.niches.filter(n=>n.id.startsWith('gallery-tall-wall-')).every(n=>n.top-n.sill>2),'Wall displays must be tall');
 for(const j of model.parts.filter(p=>p.junction))for(const wall of walls.filter(w=>[w.a,w.b].some(v=>v.every((n,i)=>Math.abs(n-j.junction[i])<1e-5)))){
  assert(model.parts.some(p=>p.group==='wall'&&p.id.startsWith(wall.id+'-')&&overlap(p,j)),'Detached wall joint '+wall.id);

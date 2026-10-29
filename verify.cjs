@@ -1,91 +1,11 @@
-// 개발용: node verify.cjs. Playwright는 검증 환경에만 필요하며 웹페이지 실행 의존성은 없다.
-const {pathToFileURL}=require('url');
-const path=require('path');
-async function main(){
-  const {chromium}=require(process.env.PLAYWRIGHT_PATH||'playwright');
-  const browser=await chromium.launch({channel:'msedge',headless:true,args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
-  try{
-    const page=await browser.newPage({viewport:{width:1440,height:960},deviceScaleFactor:1}),errors=[];
-    page.on('pageerror',e=>errors.push(e.message));
-    await page.goto(pathToFileURL(path.join(__dirname,'index.html')).href);
-    await page.waitForFunction(()=>window.MuseumViewer||!document.querySelector('#error').hidden);
-    if(await page.locator('#error').isVisible())throw Error(await page.locator('#error').textContent());
-    await page.waitForTimeout(250);
-    await page.locator('#cv').focus();
-    const initial=await page.evaluate(()=>({target:[...MuseumViewer.controls.state.target],yaw:MuseumViewer.controls.state.yaw}));
-    await page.keyboard.down('ArrowRight');await page.keyboard.down('w');await page.waitForTimeout(150);
-    const rotating=await page.evaluate(()=>({target:[...MuseumViewer.controls.state.target],yaw:MuseumViewer.controls.state.yaw}));
-    if(rotating.target.some((v,i)=>v!==initial.target[i])||rotating.yaw<=initial.yaw)throw Error('PC rotation priority');
-    await page.keyboard.up('ArrowRight');await page.waitForTimeout(150);await page.keyboard.up('w');
-    const moved=await page.evaluate(()=>MuseumViewer.controls.state.target);
-    if(moved.every((v,i)=>v===rotating.target[i]))throw Error('PC WASD movement');
-    await page.keyboard.press('Home');await page.waitForTimeout(50);
-    await page.locator('[data-mode="interior"]').click();
-    const inside=await page.evaluate(()=>({mode:MuseumViewer.controls.state.mode,pitch:MuseumViewer.controls.state.pitch,eye:MuseumViewer.controls.camera().eye}));
-    if(inside.mode!=='interior'||inside.pitch!==0||Math.abs(inside.eye[1]-1.575)>1e-8)throw Error('Interior entry');
-    await page.locator('#cv').focus();await page.keyboard.down('ArrowRight');await page.waitForTimeout(150);await page.keyboard.up('ArrowRight');
-    const eyeAfter=await page.evaluate(()=>MuseumViewer.controls.camera().eye);
-    if(eyeAfter.some((v,i)=>Math.abs(v-inside.eye[i])>1e-8))throw Error('Interior camera position changed during rotation');
-    await page.screenshot({path:path.join(__dirname,'preview-interior.png')});
-    const savedPose=await page.evaluate(()=>({eye:MuseumViewer.controls.camera().eye,yaw:MuseumViewer.controls.state.yaw,pitch:MuseumViewer.controls.state.pitch}));
-    await page.keyboard.press('Space');
-    if(await page.evaluate(()=>MuseumViewer.controls.state.mode)!=='exterior')throw Error('Space exterior toggle');
-    await page.keyboard.press('Space');
-    const restored=await page.evaluate(()=>({mode:MuseumViewer.controls.state.mode,eye:MuseumViewer.controls.camera().eye,yaw:MuseumViewer.controls.state.yaw,pitch:MuseumViewer.controls.state.pitch}));
-    if(restored.mode!=='interior'||restored.eye.some((v,i)=>Math.abs(v-savedPose.eye[i])>1e-8)||restored.yaw!==savedPose.yaw||restored.pitch!==savedPose.pitch)throw Error('Space pose restoration');
-    // FPS의 커서 잠금 중에는 외부 UI를 클릭할 수 없으므로 먼저 Space로 해제한다.
-    await page.keyboard.press('Space');await page.waitForFunction(()=>!document.pointerLockElement);
-    await page.locator('[data-mode="exterior"]').click();
-    if(await page.evaluate(()=>MuseumViewer.controls.state.mode)!=='exterior')throw Error('Exterior mode restore');
-    const info=await page.evaluate(()=>({floors:MuseumViewer.model.floors.filter(f=>f.group==='floor').length,ceilings:MuseumViewer.model.floors.filter(f=>f.group==='ceiling').length,parts:MuseumViewer.model.parts.length,glError:MuseumViewer.gl.getError()}));
-    if(info.glError!==0)throw Error('WebGL error '+info.glError);
-    await page.screenshot({path:path.join(__dirname,'preview.png')});
-    await page.locator('[data-view="top"]').click();await page.waitForTimeout(100);
-    await page.screenshot({path:path.join(__dirname,'preview-top.png')});
-    await page.locator('[data-view="gallery"]').click();await page.waitForTimeout(100);
-    await page.screenshot({path:path.join(__dirname,'preview-gallery.png')});
-    await page.locator('[data-view="immersive"]').click();await page.waitForTimeout(100);
-    await page.screenshot({path:path.join(__dirname,'preview-immersive.png')});
-    await page.locator('[data-view="right"]').click();
-    await page.locator('#rooms button').nth(0).click();
-    await page.evaluate(()=>{MuseumViewer.controls.state.target=[(400-650)*.035,.8,(230-340)*.035];MuseumViewer.controls.state.distance=13;});
-    await page.waitForTimeout(100);
-    await page.screenshot({path:path.join(__dirname,'preview-transition.png')});
-    await page.locator('[data-view="top"]').click();
-    await page.locator('#rooms button').nth(3).click();await page.waitForTimeout(100);
-    await page.screenshot({path:path.join(__dirname,'preview-entrance.png')});
-    await page.evaluate(()=>{MuseumViewer.controls.state.target=[(294-650)*.035,.5,(400-340)*.035];MuseumViewer.controls.state.distance=22;});
-    await page.waitForTimeout(100);
-    await page.screenshot({path:path.join(__dirname,'preview-bow-details.png')});
-    await page.locator('#rooms button').nth(6).click();await page.waitForTimeout(100);
-    await page.screenshot({path:path.join(__dirname,'preview-donated.png')});
-    await page.locator('[data-view="partition"]').click();await page.waitForTimeout(100);
-    await page.screenshot({path:path.join(__dirname,'preview-partition.png')});
-    for(const name of ['front','left','right']){await page.locator(`[data-view="${name}"]`).click();await page.waitForTimeout(50);}
-    await page.locator('#ceiling').check();
-    await page.screenshot({path:path.join(__dirname,'preview-ceilings.png')});
-    await page.locator('#ceiling').uncheck();
-    await page.locator('#displays').uncheck();await page.locator('#displays').check();await page.locator('#details').uncheck();await page.locator('#details').check();
-    await page.locator('#structure').uncheck();await page.locator('#structure').check();
-    await page.locator('#glass').uncheck();await page.locator('#glass').check();
-    const fullMatrices=await page.evaluate(()=>MuseumViewer.model.parts.map(p=>Array.from(MuseumViewer.partMatrix(p))));
-    await page.locator('#low').check();
-    await page.evaluate(full=>{
-      MuseumViewer.model.parts.forEach((p,i)=>{const after=Array.from(MuseumViewer.partMatrix(p)),changed=after.some((v,k)=>Math.abs(v-full[i][k])>1e-6);if(p.group==='wall'){if(!changed)throw Error('Wall not lowered '+p.id);}else if(changed)throw Error('Non-wall moved '+p.id);});
-    },fullMatrices);
-    await page.screenshot({path:path.join(__dirname,'preview-low.png')});
-    await page.locator('#walls').uncheck();await page.locator('#frames').uncheck();await page.locator('#names').uncheck();
-    await page.locator('#rooms button').nth(4).click();
-    await page.locator('#cv').focus();await page.keyboard.press('Home');
-    const state=await page.evaluate(()=>({target:MuseumViewer.controls.state.target,distance:MuseumViewer.controls.state.distance}));
-    if(!state.target.every(Number.isFinite)||!Number.isFinite(state.distance))throw Error('Invalid camera');
-    await page.setViewportSize({width:640,height:850});await page.waitForTimeout(100);
-    if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('Mobile overflow');
-    if(errors.length)throw Error(errors.join('\n'));
-    if(await page.evaluate(()=>MuseumViewer.gl.getError())!==0)throw Error('WebGL error after controls');
-    console.log(JSON.stringify({ok:true,...info,checks:['WebGL2','geometry','six views including partition','ceiling/structure/glass toggles','display toggles','room focus','Home','mobile width','no page errors']}));
-  }finally{await browser.close();}
-}
-main().catch(e=>{console.error(e);process.exitCode=1;});
-
-
+// PC 화면·조작 회귀 검사. 관람 UI는 세 모드 버튼만 제공한다.
+const {pathToFileURL}=require('url'),path=require('path'),assert=require('node:assert/strict');
+(async()=>{const {chromium}=require(process.env.PLAYWRIGHT_PATH||'playwright');const browser=await chromium.launch({channel:'msedge',headless:true,args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});try{
+ const page=await browser.newPage({viewport:{width:1440,height:960}}),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto(pathToFileURL(path.join(__dirname,'index.html')).href);await page.waitForFunction(()=>window.MuseumViewer?.surfaceStats);assert.equal(await page.locator('aside button').count(),3);assert.equal(await page.locator('aside input,#rooms,[data-view],[data-mode]').count(),0);assert.equal(await page.locator('#exhibit-info').textContent(),'');
+ await page.locator('[data-navigation="plan"]').click();assert(await page.evaluate(()=>MuseumViewer.controls.state.orthographic));assert.equal(await page.locator('[data-navigation="plan"]').getAttribute('aria-pressed'),'true');await page.screenshot({path:path.join(__dirname,'preview-top.png')});
+ const r=await page.locator('#cv').boundingBox();await page.mouse.move(r.x+r.width/2,r.y+r.height/2);await page.mouse.down();await page.mouse.move(r.x+r.width/2,r.y+r.height/2-80,{steps:8});await page.mouse.up();assert(!await page.evaluate(()=>MuseumViewer.controls.state.orthographic));
+ await page.locator('[data-navigation="orbit"]').click();assert.equal(await page.locator('[data-navigation="orbit"]').getAttribute('aria-pressed'),'true');await page.screenshot({path:path.join(__dirname,'preview.png')});
+ await page.locator('[data-navigation="interior"]').click();await page.waitForFunction(()=>document.pointerLockElement===document.querySelector('#cv'));const eye=await page.evaluate(()=>MuseumViewer.controls.camera().eye),yaw=await page.evaluate(()=>MuseumViewer.controls.state.yaw);await page.mouse.move(r.x+r.width/2+50,r.y+r.height/2+50,{steps:5});await page.waitForTimeout(60);assert.notEqual(await page.evaluate(()=>MuseumViewer.controls.state.yaw),yaw);assert.deepEqual(await page.evaluate(()=>MuseumViewer.controls.camera().eye),eye);
+ await page.keyboard.press('Space');await page.waitForFunction(()=>!document.pointerLockElement);assert.equal(await page.locator('[data-navigation="orbit"]').getAttribute('aria-pressed'),'true');await page.locator('#cv').focus();const start=await page.evaluate(()=>[...MuseumViewer.controls.state.target]);await page.keyboard.down('w');await page.waitForTimeout(120);await page.keyboard.up('w');assert.notDeepEqual(await page.evaluate(()=>MuseumViewer.controls.state.target),start);await page.keyboard.press('Home');
+ await page.setViewportSize({width:640,height:850});await page.waitForTimeout(80);assert(!await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth));assert.equal(await page.evaluate(()=>MuseumViewer.gl.getError()),0);assert.deepEqual(errors,[]);console.log('PASS three-button UI, empty exhibit panel, plan/orbit/interior, top drag escape, FPS lock/look, WASD/Home, no WebGL errors');
+}finally{await browser.close();}})().catch(e=>{console.error(e);process.exit(1)});

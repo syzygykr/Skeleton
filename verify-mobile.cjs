@@ -12,7 +12,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_PATH||'playwright'),{pathToFileU
   await touch('touchStart',[point(1,110,350)]);await touch('touchStart',[point(1,110,350),point(2,250,350)]);
   const panStart=await pose();await touch('touchMove',[point(1,130,365),point(2,270,365)]);const panEnd=await pose();assert(!equal(panStart.target,panEnd.target),'Two-finger pan');assert(Math.abs(panStart.distance-panEnd.distance)<1e-7);
   await touch('touchMove',[point(1,90,365),point(2,310,365)]);assert((await pose()).distance<panEnd.distance,'Pinch zoom');await touch('touchEnd',[]);
-  await p.locator('[data-touch="mode"]').tap();assert(await p.evaluate(()=>MuseumViewer.controls.state.mode==='interior'&&!document.pointerLockElement),'Touch mode must not lock cursor');
+  await p.locator('[data-navigation="interior"]').tap();assert(await p.evaluate(()=>MuseumViewer.controls.state.mode==='interior'&&!document.pointerLockElement),'Touch mode must not lock cursor');
   await p.evaluate(()=>{const q=MuseumGeometry.point([700,540]);MuseumViewer.controls.setMode('interior',[q[0],1.575,q[1]]);});await p.waitForTimeout(80);
   const stick=await p.locator('.mobile-stick').boundingBox(),sx=stick.x+stick.width/2,sy=stick.y+stick.height/2;
   const before=await pose();await touch('touchStart',[point(1,sx,sy)]);await touch('touchMove',[point(1,sx,sy-30)]);
@@ -22,10 +22,10 @@ const {chromium}=require(process.env.PLAYWRIGHT_PATH||'playwright'),{pathToFileU
   const fov=stop.fov;await p.locator('[data-touch="in"]').tap();assert((await pose()).fov<fov,'Interior FOV zoom');
   await touch('touchStart',[point(1,sx,sy-30)]);await p.waitForTimeout(80);await touch('touchCancel',[]);const cancelled=await pose();await p.waitForTimeout(100);assert(equal(cancelled.eye,(await pose()).eye),'Cancelled touch stops movement');
   await p.screenshot({path:path.join(__dirname,'preview-mobile-interior.png')});
-  await p.locator('[data-touch="panel"]').tap();assert(await p.evaluate(()=>document.body.classList.contains('mobile-panel-open')));await p.locator('#rooms button').filter({hasText:'야외체험장'}).tap();assert(!await p.evaluate(()=>document.body.classList.contains('mobile-panel-open')));
-  await p.locator('[data-touch="home"]').tap();assert(await p.evaluate(()=>MuseumViewer.controls.state.mode==='exterior'));await p.screenshot({path:path.join(__dirname,'preview-mobile-exterior.png')});
+  await p.locator('[data-navigation="plan"]').tap();assert(await p.evaluate(()=>MuseumViewer.controls.state.orthographic));assert.equal(await p.locator('aside button').count(),3);assert.equal(await p.locator('#exhibit-info').textContent(),'');
+  await p.locator('[data-navigation="orbit"]').tap();assert(await p.evaluate(()=>MuseumViewer.controls.state.mode==='exterior'));await p.screenshot({path:path.join(__dirname,'preview-mobile-exterior.png')});
   await p.setViewportSize({width:844,height:390});await p.waitForTimeout(100);assert(!await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),'Landscape overflow');await p.screenshot({path:path.join(__dirname,'preview-mobile-landscape.png')});
   assert(!await p.evaluate(()=>document.documentElement.scrollHeight>innerHeight),'Landscape page scroll');assert.equal(await p.evaluate(()=>MuseumViewer.gl.getError()),0);assert.deepEqual(errors,[]);
-  console.log('PASS mobile orbit, two-finger pan/pinch, simultaneous joystick/look, release/cancel, FOV, panel/room/home, portrait/landscape, no pointer lock or WebGL errors');
+  console.log('PASS mobile orbit, two-finger pan/pinch, simultaneous joystick/look, release/cancel, FOV, three-mode buttons and empty exhibit panel, portrait/landscape, no pointer lock or WebGL errors');
  }finally{await b.close();}
 })().catch(e=>{console.error(e);process.exit(1)});

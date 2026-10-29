@@ -39,7 +39,7 @@
   {id:'gallery-table-1',a:[407,175],b:[541,175],depth:.90,height:.90,room:'long'},
   {id:'gallery-table-2',a:[555,175],b:[683,175],depth:.90,height:.90,room:'long'}
  ];
- d.displays.push({id:'horse-platform',at:[335,84],size:[4.15,.26,2.65],type:'platform',room:'long'});
+ d.displays.push({id:'horse-platform',at:[270+(d.wallThickness+4.15/2)/d.scale,24+(d.wallThickness+2.65/2)/d.scale],size:[4.15,.26,2.65],topOverhang:0,type:'platform',room:'long',evidence:'사용자 표시: 서측·북측 벽 실내 면에 빈틈 없이 붙인 대형 전시대'});
  // 벽 매입부: 뒤벽·측벽·상인방과 하부 받침을 갖는 두꺼운 내부 벽 라이닝.
  // 외벽을 투명 상자로 바꾸지 않는다. 전면 유리만 별도 생성한다.
  d.niches=[
@@ -168,6 +168,7 @@
  d.walls.find(w=>w.id==='entrance-transom').b=[205,496-d.wallThickness/d.scale];
  // 사용자 빨간 테두리: 체험마루 남측을 따라 넓힌 야외 마당과 낮은 경계벽.
  d.eyeHeight=1.575;
+ d.floor.woodRegion={bounds:[552,256,790,480],tileSize:[2.4,2.4],asset:'maruWood'};
  const terrace=d.rooms.find(r=>r.id==='outdoor');
  terrace.name='야외체험장';
  terrace.polygon=[[492,496],[552,496],[552,480],[900,480],[900,584],[492,584]];
@@ -178,6 +179,9 @@
  const boundary=[[492,496],[492,584],[900,584],[900,480],[790,480]];
  for(let i=0;i<boundary.length-1;i++)d.walls.push({id:'outdoor-boundary-'+i,a:boundary[i],b:boundary[i+1],height:d.eyeHeight*.4,thickness:.16,room:'outdoor',evidence:'사용자 빨간 테두리: 카메라 높이 0.4배의 통과 불가능한 낮은 경계벽'});
  Object.assign(d.shell.find(w=>w.id==='shell-bow-south').openings[0],{kind:'opening',note:'사용자 체크한 쪽문: 유리 없이 야외로 걸어서 통과'});
+ const roomNames={bow:'중앙 로비',video:'영상실',long:'주 전시실',link:'중앙 복도'};
+ const entryPoints={bow:[320,420],video:[185,260],long:[620,110],link:[610,220],maru:[650,350],planned:[910,325],donated:[1100,290],outdoor:[700,540],immersive:[930,110]};
+ for(const room of d.rooms){if(roomNames[room.id])room.name=roomNames[room.id];room.entryAt=entryPoints[room.id];}
  d.unresolved=d.unresolved.filter(s=>!s.includes('전시품·전시대'));
  d.unresolved.push('전시대·입구 책상·활 모양 천장·동선 아치를 추가. 전시품과 인쇄물은 제외. 위치·곡률·개수는 관찰에 따른 근사이며 실측 복제는 아님');
 })();
