@@ -23,6 +23,23 @@ window.MuseumGeometry = (()=>{
   function build(){
     const parts=[],floors=[{...data.floor,mesh:floor(data.floor.polygon,data.floor.height),group:'floor'},
       ...(data.ceilings||[]).map(c=>({...c,mesh:floor(c.polygon,c.height),group:'ceiling'}))];
+    if(data.outdoorGrass){
+      const g=data.outdoorGrass,poly=g.polygon.map(point),pos=[],nrm=[],idx=[];
+      floors.push({...g,mesh:floor(g.polygon,g.height),group:'grass'});
+      const inside=(x,z)=>{let yes=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++)if((poly[i][1]>z)!==(poly[j][1]>z)&&x<(poly[j][0]-poly[i][0])*(z-poly[i][1])/(poly[j][1]-poly[i][1])+poly[i][0])yes=!yes;return yes;};
+      let seed=1031;const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
+      const lo=[Math.min(...poly.map(p=>p[0])),Math.min(...poly.map(p=>p[1]))],hi=[Math.max(...poly.map(p=>p[0])),Math.max(...poly.map(p=>p[1]))];
+      for(let x=lo[0]+.05;x<hi[0]-.05;x+=g.spacing)for(let z=lo[1]+.05;z<hi[1]-.05;z+=g.spacing){
+        const px=x+(random()-.5)*.12,pz=z+(random()-.5)*.12,w=.025,h=g.bladeHeight*(.7+random()*.7);
+        if(![[-w,-w],[w,-w],[w,w],[-w,w]].every(v=>inside(px+v[0],pz+v[1])))continue;
+        for(const angle of [random()*Math.PI,random()*Math.PI]){
+          const dx=Math.cos(angle)*w,dz=Math.sin(angle)*w,base=pos.length/3;
+          pos.push(px-dx,g.height,pz-dz,px+dx,g.height,pz+dz,px+dx*.2,g.height+h,pz+dz*.2);
+          for(let k=0;k<3;k++)nrm.push(-Math.sin(angle),.3,Math.cos(angle));idx.push(base,base+1,base+2);
+        }
+      }
+      parts.push({id:g.id+'-blades',mesh:{pos:new Float32Array(pos),nrm:new Float32Array(nrm),idx:new Uint16Array(idx)},position:[0,0,0],size:[1,1,1],yaw:0,color:g.color,group:'grass',room:'outdoor'});
+    }
     const wallColor=[.85,.86,.83],frameColor=[.43,.48,.47];
     function span(id,a,b,low,high,thickness,color,group,room){
       const dx=b[0]-a[0],dz=b[1]-a[1],length=Math.hypot(dx,dz);
@@ -157,6 +174,17 @@ window.MuseumGeometry = (()=>{
       span(n.id+'-left',midA,off(at(.08/len),n.depth/2),n.bottom,n.top,n.depth,wood,'displays',n.room);
       span(n.id+'-right',off(at(1-.08/len),n.depth/2),midB,n.bottom,n.top,n.depth,wood,'displays',n.room);
       span(n.id+'-glass',frontA,frontB,n.bottom+.09,n.top-.09,.018,[.62,.78,.79],'displayGlass',n.room);parts[parts.length-1].alpha=.16;
+    }
+    // 바닥 기단과 프레임 없는 유리 덮개. 뒷면은 기존 벽에 밀착한다.
+    for(const n of data.glassCases||[]){
+      const a=point(n.a),b=point(n.b),offset=(p,d)=>p.map((v,i)=>v+n.inward[i]*d),midA=offset(a,n.depth/2),midB=offset(b,n.depth/2),fa=offset(a,n.depth),fb=offset(b,n.depth);
+      span(n.id+'-toe',midA,midB,0,.06,n.depth,[.16,.17,.16],'displays',n.room);
+      span(n.id+'-base',midA,midB,.06,n.baseHeight-.035,n.depth,[.62,.60,.55],'displays',n.room);
+      span(n.id+'-deck',midA,midB,n.baseHeight-.035,n.baseHeight,n.depth,[.86,.85,.80],'displays',n.room);
+      for(const [id,start,end] of [['front',fa,fb],['left',a,fa],['right',b,fb]]){
+        span(n.id+'-glass-'+id,start,end,n.baseHeight,n.top,.018,[.62,.78,.79],'displayGlass',n.room);parts[parts.length-1].alpha=.16;
+      }
+      span(n.id+'-glass-roof',midA,midB,n.top-.018,n.top,n.depth,[.62,.78,.79],'displayGlass',n.room);parts[parts.length-1].alpha=.14;
     }
     for(const n of data.niches||[]){
       const a=point(n.a),b=point(n.b),len=Math.hypot(b[0]-a[0],b[1]-a[1]),at=t=>a.map((v,i)=>v+(b[i]-v)*t),offset=(p,d)=>p.map((v,i)=>v+n.inward[i]*d),midA=offset(a,n.depth/2),midB=offset(b,n.depth/2),faceA=offset(a,n.depth),faceB=offset(b,n.depth),h=data.wallHeight;

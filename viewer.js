@@ -16,23 +16,25 @@
       uniform mat4 uModel,uVP;uniform mat3 uNormal;out vec3 vN;out vec3 vWorld;
       void main(){vN=uNormal*aNormal;vec4 world=uModel*vec4(aPos,1.);vWorld=world.xyz;gl_Position=uVP*world;}
     `,`#version 300 es
-      precision highp float;in vec3 vN;in vec3 vWorld;uniform vec3 uColor,uEye;uniform float uAlpha,uNeutralFloorX;uniform int uSurface;uniform bool uFloorTexture;uniform sampler2D uWood;uniform vec4 uWoodBounds,uEntryBounds,uOutdoorBounds;uniform vec2 uWoodTile;out vec4 outColor;
+      precision highp float;in vec3 vN;in vec3 vWorld;uniform vec3 uColor,uEye;uniform float uAlpha;uniform int uSurface;uniform bool uFloorTexture;uniform sampler2D uWood;uniform vec4 uWoodBounds,uGrassBounds;uniform vec2 uWoodTile,uGrassNotch;out vec4 outColor;
       float hash(vec3 p){p=fract(p*.1031);p+=dot(p,p.yzx+33.33);return fract((p.x+p.y)*p.z);}
       bool within(vec4 b){return vWorld.x>=b.x&&vWorld.z>=b.y&&vWorld.x<=b.z&&vWorld.z<=b.w;}
       void main(){
         vec3 n=normalize(vN),light=normalize(vec3(-.3,1.,.5));float l=.62+.38*max(dot(n,light),0.);vec3 color=uColor*l;
         if(uSurface==1){
+          // 잔디 아래의 기존 바닥 픽셀을 생략해 얇은 받침면과의 깊이 충돌을 방지한다.
+          if(within(uGrassBounds)&&(vWorld.x>=uGrassNotch.x||vWorld.z>=uGrassNotch.y))discard;
           float grain=hash(floor(vWorld*260.)),fleck=hash(floor(vWorld*115.));
           float aa=clamp(length(fwidth(vWorld.xz))*160.,0.,1.);
           color=(vec3(.43,.49,.52)+(grain-.5)*.095*(1.-aa)+step(.93,fleck)*.025*(1.-aa))*l;
-          if(vWorld.x>=uNeutralFloorX)color=(vec3(.52,.53,.54)+(grain-.5)*.075*(1.-aa))*l;
           vec2 edge=min(fract(vWorld.xz/.60),1.-fract(vWorld.xz/.60));
           color*=1.-.035*(1.-smoothstep(0.,max(.002,fwidth(vWorld.x)*2.),min(edge.x,edge.y)));
-          if(within(uEntryBounds)){
-            vec2 tile=fract(vWorld.xz/.55),nearEdge=min(tile,1.-tile);float seam=1.-smoothstep(.008,.018,min(nearEdge.x,nearEdge.y));
-            color=mix(vec3(.26,.205,.17)*(1.+(hash(vec3(floor(vWorld.xz/.55),0.))-.5)*.18),vec3(.47,.46,.42),seam)*l;
-          }
-          if(within(uOutdoorBounds))color=(vec3(.50,.51,.48)+(grain-.5)*.06*(1.-aa))*l;
+
+        }
+        if(uSurface==4){
+          float fine=hash(floor(vWorld*190.)),patchNoise=hash(vec3(floor(vWorld.xz*5.),0.));
+          float aa=clamp(length(fwidth(vWorld.xz))*110.,0.,1.);
+          color=(vec3(.24,.39,.13)+(fine-.5)*.12*(1.-aa)+(patchNoise-.5)*.045)*l;
         }
         if(uSurface==2){float aa=clamp(length(fwidth(vWorld))*160.,0.,1.);color=vec3(.89,.885,.86)*(1.+(hash(floor(vWorld*210.))-.5)*.025*(1.-aa))*l;if(vWorld.y<.075&&abs(n.y)<.5)color=vec3(.065,.064,.062)*l;}
         if(uSurface==3){
@@ -49,7 +51,7 @@
         outColor=vec4(color,uAlpha);
       }
     `);
-    const U=D.uniforms(gl,program,['uModel','uVP','uNormal','uColor','uAlpha','uEye','uFloorTexture','uWood','uWoodBounds','uWoodTile','uSurface','uEntryBounds','uOutdoorBounds','uNeutralFloorX']);
+    const U=D.uniforms(gl,program,['uModel','uVP','uNormal','uColor','uAlpha','uEye','uFloorTexture','uWood','uWoodBounds','uWoodTile','uSurface','uGrassBounds','uGrassNotch']);
     const woodTexture=gl.createTexture(),woodImage=new Image();let woodReady=false;
     gl.bindTexture(gl.TEXTURE_2D,woodTexture);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([180,125,60,255]));
     woodImage.onload=()=>{
@@ -146,8 +148,7 @@
       else M.perspective(projection,controls.state.fov*Math.PI/180,w/h,.02,250);
       M.multiply(vp,projection,view);gl.useProgram(program);gl.uniformMatrix4fv(U.uVP,false,vp);
       gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,woodTexture);gl.uniform1i(U.uWood,0);gl.uniform3fv(U.uEye,camera.eye);gl.uniform4fv(U.uWoodBounds,[...woodMin,...woodMax]);gl.uniform2fv(U.uWoodTile,woodRegion.tileSize);
-      gl.uniform4fv(U.uEntryBounds,[...MuseumGeometry.point([36,318]),...MuseumGeometry.point([205,496])]);gl.uniform4fv(U.uOutdoorBounds,[...MuseumGeometry.point([492,496]),...MuseumGeometry.point([900,584])]);
-      gl.uniform1f(U.uNeutralFloorX,MuseumGeometry.point([818,24])[0]);
+      gl.uniform4fv(U.uGrassBounds,[...MuseumGeometry.point([492,480]),...MuseumGeometry.point([900,584])]);gl.uniform2fv(U.uGrassNotch,MuseumGeometry.point([552,496]));
       for(const f of model.floors){if(!f.renderGpu)continue;draw(f.renderGpu,identity,f.color,1,f.group==='floor',MuseumMaterials.classify(f));}
       for(const p of model.parts){if(['glass','displayGlass'].includes(p.group)||!visible(p))continue;draw(p.renderGpu,matrix(p),p.color,1,false,MuseumMaterials.classify(p));}
       // 얇은 유리판은 불투명 부재 뒤에, 카메라에서 먼 순서로 그린다.

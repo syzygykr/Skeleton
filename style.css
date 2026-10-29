@@ -11,3 +11,4 @@
 .mobile-input .mobile-panel-toggle{display:grid;place-items:center;position:fixed;right:env(safe-area-inset-right,0px);top:50%;transform:translateY(-50%);z-index:20;width:44px;height:56px;padding:0;border:1px solid #b6c4b7;border-right:0;border-radius:10px 0 0 10px;background:#f8f9f4f2;color:#3d5948;font:32px/1 system-ui;box-shadow:-2px 2px 8px #24382818;touch-action:manipulation;cursor:pointer}
 .mobile-input.panel-hidden .app{grid-template-columns:minmax(0,1fr)}
 .mobile-input.panel-hidden aside{display:none}
+.mobile-input:not(.panel-hidden) .mobile-panel-toggle{right:25%}

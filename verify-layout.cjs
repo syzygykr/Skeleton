@@ -16,11 +16,11 @@ const {chromium}=require(process.env.PLAYWRIGHT_PATH||'playwright'),{pathToFileU
     assert(layout.buttons.every(r=>r.left>=layout.left&&r.right<=layout.right&&r.height>=44));
     if(mobile){
      const toggle=p.locator('.mobile-panel-toggle');assert(await toggle.isVisible());
-     const bounds=await toggle.boundingBox();assert(Math.abs(bounds.x+bounds.width-width)<1);assert(Math.abs(bounds.y+bounds.height/2-height/2)<1);assert(bounds.width>=44);
+     const bounds=await toggle.boundingBox();assert(Math.abs(bounds.x+bounds.width-width*.75)<1);assert(Math.abs(bounds.y+bounds.height/2-height/2)<1);assert(bounds.width>=44);
      const before=await p.evaluate(()=>({camera:MuseumViewer.controls.camera(),mode:MuseumViewer.controls.state.mode}));
      await toggle.tap();assert.equal(await toggle.getAttribute('aria-expanded'),'false');assert(!await p.locator('aside').isVisible());
      await p.evaluate(()=>new Promise(requestAnimationFrame));
-     const full=await p.locator('.stage').boundingBox();assert(Math.abs(full.width-width)<1);assert(await toggle.isVisible());
+     const full=await p.locator('.stage').boundingBox();assert(Math.abs(full.width-width)<1);assert(await toggle.isVisible());const closedButton=await toggle.boundingBox();assert(Math.abs(closedButton.x+closedButton.width-width)<1,'Expand stays at screen edge');
      assert.deepEqual(await p.evaluate(()=>({camera:MuseumViewer.controls.camera(),mode:MuseumViewer.controls.state.mode})),before);
      if(width===390)await p.screenshot({path:path.join(__dirname,'preview-mobile-panel-hidden.png')});
      await toggle.tap();assert.equal(await toggle.getAttribute('aria-expanded'),'true');assert(await p.locator('aside').isVisible());

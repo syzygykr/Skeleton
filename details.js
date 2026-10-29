@@ -15,12 +15,26 @@
  d.walls.push({id:'entrance-transom',a:[205,318],b:[205,496],bottom:2.5,height:2.8,thickness:.14,room:'bow',evidence:'기존 유리 전실의 상부 연결부. 출입구 아래는 개방 유지'});
  d.detailArches=[{id:'video-route-arch',a:[294,305],b:[400,305],spring:2.18,rise:.38,depth:.14,thickness:.14,posts:true,room:'bow',evidence:'하향 90도 회전한 구분벽 끝 (400,305)에 아치 기둥을 맞춰 직각 접합'}];
  d.detailRibbons=[];
- for(const [id,x,side] of [['bow-left',350,-1],['bow-right',488,0]]){
-   const path=Array.from({length:33},(_,i)=>{const t=i/32;return [x+side*10*Math.sin(Math.PI*t),310+100*t];});
-   d.detailRibbons.push({id,path,bottom:2.38,height:.30,width:5,room:'bow'});
+ // 사용자 표시: 양쪽 활대의 볼록한 곡선과 중앙 안쪽 손잡이 꺾임을 가진 활 윤곽.
+ // 높이 방향 아치가 아니라 상단 평면에서의 목재 전면 윤곽이다.
+ const bowSegments=[
+   [[350,310],[344,320],[330,330],[333,342]],
+   [[333,342],[335,350],[352,354],[358,360]],
+   [[358,360],[352,366],[335,370],[333,378]],
+   [[333,378],[330,390],[344,400],[350,410]]
+ ];
+ const bowPath=[];
+ for(const [segment,points] of bowSegments.entries())for(let i=segment?1:0;i<=16;i++){
+   const t=i/16,u=1-t;bowPath.push([0,1].map(k=>u*u*u*points[0][k]+3*u*u*t*points[1][k]+3*u*t*t*points[2][k]+t*t*t*points[3][k]));
  }
+ d.detailRibbons.push({id:'bow-left',path:bowPath,bottom:2.38,height:.30,width:5,room:'bow',evidence:'사용자 붉은 윤곽: 두 활대 곡선과 중앙 손잡이의 안쪽 꺾임'});
+ d.detailRibbons.push({id:'bow-right',path:[[488,310],[488,410]],bottom:2.38,height:.30,width:5,room:'bow'});
  d.detailRails=[];
- for(let z=310;z<=410;z+=20)d.detailRails.push({id:'bow-cross-'+z,a:[350,z],b:[488,z]});
+ for(let z=310;z<=410;z+=20){
+   const index=bowPath.findIndex(p=>p[1]>=z),a=bowPath[Math.max(0,index-1)],b=bowPath[index];
+   const x=b[1]===a[1]?b[0]:a[0]+(b[0]-a[0])*(z-a[1])/(b[1]-a[1]);
+   d.detailRails.push({id:'bow-cross-'+z,a:[x,z],b:[488,z]});
+ }
  for(let x=373;x<488;x+=23)d.detailRails.push({id:'bow-long-'+x,a:[x,310],b:[x,410]});
  // 체험마루 서측 통로 끝에서 야외 방향으로 이어지는 작은 유리문.
  d.shell.find(w=>w.id==='shell-bow-south').openings=[{from:.022,to:.085,height:2.18,kind:'glazed',divisions:1,note:'VR 통로 끝 유리문. 남측 벽의 위치와 폭은 사진 대응 근사'}];
@@ -145,6 +159,13 @@
  const floorStart=d.floor.polygon.findIndex(p=>p[0]===1145&&p[1]===414);
  d.floor.polygon.splice(floorStart+1,1,...backBoundary.map(w=>[...w.a]),[...backEnd]);
  d.walls.find(w=>w.id==='gallery-transition').thickness=.44;
+ // 아치 오른쪽 기둥(400,305)의 동쪽 돌출면보다 뒤로 물린 홈에서 시작한다.
+ // 전시대 사이 틈을 ㄱ자로 막고 X442의 작업대 뒤 벽에 연결한다.
+ const notchX=400+.22/d.scale;
+ d.walls.push(
+   {id:'bow-recess-return',a:[notchX,301],b:[442,301],height:2.55,thickness:.16,room:'bow',evidence:'사용자 표시 ㄱ자: 기둥 동쪽 홈에서 시작하여 기둥 전면은 노출'},
+   {id:'bow-recess-side',a:[442,301],b:[442,320],height:2.55,thickness:.16,room:'bow',evidence:'사용자 표시 ㄱ자: 작업대 뒤 벽 시작점(442,320)에 접합'}
+ );
  // 아치 옆 사진은 벽걸이 함이 아니라 바닥에 닿는 목재 하부장 + 낮은 상부 유리장.
  d.wallCases=[];
  d.displays.push({id:'arch-corridor-case',at:[400-(.22+.30)/d.scale,280],size:[.60,.85,38*d.scale],type:'low',room:'long',evidence:'사용자 근접 사진 정정: 바닥부터 목재 하부장, 밝은 상판 위 낮은 유리 진열부. 벽걸이 형태 아님'});
@@ -158,6 +179,9 @@
  }
  Object.assign(d.galleryTables[0],{a:[400+.22/d.scale,175],b:[548-.22/d.scale,175]});
  Object.assign(d.galleryTables[1],{a:[548+.22/d.scale,175],b:[690-.22/d.scale,175]});
+ // 사용자 표시: 주 전시실 오른쪽 끝의 벽걸이 함을 기단+통유리 대형 진열장으로 교체.
+ d.wallCases=d.wallCases.filter(c=>c.id!=='gallery-hanging-case-690');
+ d.glassCases=[{id:'gallery-end-showcase',a:[690+.22/d.scale,155],b:[690+.22/d.scale,195],inward:[1,0],depth:1.15,baseHeight:.45,top:d.columns.find(c=>c.id==='gallery-pier-3').height,room:'long',evidence:'사용자 붉은 표시: 기둥 상단 높이까지 통유리. 돌출1.15, 옆 구획까지 통로 약2.89 유지'}];
  // 외피는 항상 경계 안쪽으로 두께를 두어 꺾인 구간의 바깥면을 일치시킨다.
  for(const w of d.shell){const dx=w.b[0]-w.a[0],dz=w.b[1]-w.a[1],len=Math.hypot(dx,dz);w.inset=[-dz/len,dx/len];}
  d.walls.find(w=>w.id==='maru-west').inset=[-1,0];
@@ -173,6 +197,7 @@
  terrace.name='야외체험장';
  terrace.polygon=[[492,496],[552,496],[552,480],[900,480],[900,584],[492,584]];
  terrace.note='사용자 지정 확장 마당. 열린 서측 쪽문으로 출입하며 높이 0.63의 경계벽은 통과할 수 없음';
+ d.outdoorGrass={id:'outdoor-turf',polygon:terrace.polygon.map(p=>[...p]),height:.002,spacing:.28,bladeHeight:.035,color:[.24,.39,.13],room:'outdoor'};
  const terraceStart=d.floor.polygon.findIndex(p=>p[0]===790&&p[1]===480);
  const terraceEnd=d.floor.polygon.findIndex(p=>p[0]===492&&p[1]===496);
  d.floor.polygon.splice(terraceStart+1,terraceEnd-terraceStart,[900,480],[900,584],[492,584],[492,496]);

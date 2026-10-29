@@ -9,7 +9,10 @@ assert.equal(data.shell.find(w=>w.id==='shell-projection').a[0],1056,'Expanded p
 assert(data.floor.polygon.some(p=>p[0]===1056&&p[1]===24),'Expanded immersive floor corner');
 assert.deepEqual(Array.from(data.shell.find(w=>w.id==='shell-east-door').b),[1120,256]);
 assert(!data.floor.polygon.some(p=>p[0]===980&&p[1]===414),'Removed rear pocket remains in floor');
-assert.equal(data.wallCases.length,2,'Only two outer end-wall hanging cases');
+assert.equal(data.wallCases.length,1,'Only left end-wall hanging case remains');
+assert(!data.wallCases.some(c=>c.id==='gallery-hanging-case-690'));
+const large=data.glassCases.find(c=>c.id==='gallery-end-showcase');assert.equal(large.top,data.columns.find(c=>c.id==='gallery-pier-3').height);assert.equal(large.depth,1.15);assert.equal(model.parts.filter(p=>p.id.startsWith(large.id+'-glass-')).length,4);
+assert((818-690)*data.scale-.44-large.depth>2.8,'Preserve corridor width');
 const archCase=data.displays.find(d=>d.id==='arch-corridor-case');
 assert(archCase&&archCase.type==='low'&&archCase.size[1]===.85,'Arch case must have floor-standing timber base and low glazing');
 assert(!data.wallCases.some(w=>w.id==='gallery-hanging-case-548'),'No cabinet on middle wall');
