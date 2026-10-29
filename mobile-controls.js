@@ -3,10 +3,13 @@ window.MuseumMobileControls=function(canvas,controls,options={}){
  const media=matchMedia('(any-pointer: coarse)'),touches=new Map();
  // 태블릿의 데스크톱 모드·마우스 연결 여부와 무관하게 터치 지원을 확인한다.
  const touchDevice=()=>media.matches||(navigator.maxTouchPoints||0)>0;
+ const primaryTouch=matchMedia('(pointer: coarse)'),noHover=matchMedia('(hover: none)');
+ let lastPointer=null;
+ // 터치 지원은 패널 버튼용, 실제 입력 방식은 조이스틱용으로 따로 판단한다.
+ const touchNavigation=()=>lastPointer==='touch'||(lastPointer===null&&primaryTouch.matches&&noHover.matches);
  let pair=null,stick=null,axes=[0,0],revision=controls.state.revision;
  const root=document.createElement('div');root.className='mobile-hud';root.innerHTML=`
   <div class="mobile-stick" role="group" aria-label="이동 조이스틱"><span class="stick-label">이동</span><span class="stick-knob"></span></div>
-  <div class="mobile-zoom"><button type="button" data-touch="in" aria-label="확대">＋</button><button type="button" data-touch="out" aria-label="축소">−</button></div>
   `;
  canvas.parentElement.append(root);const joystick=root.querySelector('.mobile-stick'),knob=root.querySelector('.stick-knob');
  const panel=document.querySelector('aside'),panelToggle=document.createElement('button');
@@ -24,9 +27,16 @@ window.MuseumMobileControls=function(canvas,controls,options={}){
  panelToggle.addEventListener('click',()=>{reset();controls.clear();panelClosed=!panelClosed;syncPanel();});
  const release=(target,id)=>{try{if(target.hasPointerCapture(id))target.releasePointerCapture(id);}catch{}};
  function reset(){for(const id of touches.keys())release(canvas,id);touches.clear();pair=null;if(stick!==null)release(joystick,stick);stick=null;axes=[0,0];knob.style.transform='translate(0px,0px)';}
- function sync(){joystick.hidden=controls.state.mode!=='interior';}
+ function sync(){document.body.classList.toggle('touch-navigation',touchNavigation());joystick.hidden=controls.state.mode!=='interior'||!touchNavigation();}
  function configure(){reset();document.body.classList.toggle('mobile-input',touchDevice());sync();syncPanel();}
- for(const [name,delta] of [['in',-.15],['out',.15]])root.querySelector(`[data-touch="${name}"]`).addEventListener('click',()=>{controls.input.zoom(delta);});
+ function usePointer(e){
+  if(!['mouse','touch','pen'].includes(e.pointerType))return;
+  const input=e.pointerType==='touch'?'touch':'mouse';
+  if(lastPointer===input)return;reset();lastPointer=input;sync();
+ }
+ document.addEventListener('pointerdown',usePointer,true);
+ document.addEventListener('pointermove',e=>{if(e.pointerType==='mouse'&&(e.movementX||e.movementY))usePointer(e);},true);
+ primaryTouch.addEventListener('change',configure);noHover.addEventListener('change',configure);
  const snapshot=()=>{const p=[...touches.values()];return p.length===2?{x:(p[0].x+p[1].x)/2,y:(p[0].y+p[1].y)/2,d:Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y)}:null;};
  canvas.addEventListener('pointerdown',e=>{
   if(e.pointerType!=='touch'||touches.size>=2)return;
@@ -38,7 +48,11 @@ window.MuseumMobileControls=function(canvas,controls,options={}){
   if(revision!==controls.state.revision){reset();return;}
   const old=touches.get(e.pointerId),dx=e.clientX-old.x,dy=e.clientY-old.y;touches.set(e.pointerId,{x:e.clientX,y:e.clientY});
   const unit=Math.PI/Math.max(1,canvas.clientHeight);
-  if(controls.state.mode==='interior'){if(touches.size===1)controls.input.rotate(-dx*unit*.5,dy*unit*.5);return;}
+  if(controls.state.mode==='interior'){
+   if(touches.size===1)controls.input.rotate(-dx*unit*.5,dy*unit*.5);
+   else{const current=snapshot();if(pair&&current.d>8&&pair.d>8)controls.input.zoom(Math.log(pair.d/current.d));pair=current;}
+   return;
+  }
   if(touches.size===1){controls.input.rotate(-dx*unit,dy*unit);return;}
   const current=snapshot();if(pair){controls.input.pan(current.x-pair.x,current.y-pair.y);if(current.d>8&&pair.d>8)controls.input.zoom(Math.log(pair.d/current.d));}pair=current;
  });
@@ -52,6 +66,6 @@ window.MuseumMobileControls=function(canvas,controls,options={}){
  const endStick=e=>{if(e.pointerId===stick){const id=stick;stick=null;axes=[0,0];knob.style.transform='translate(0px,0px)';release(joystick,id);}};
  for(const event of ['pointerup','pointercancel','lostpointercapture'])joystick.addEventListener(event,endStick);
  window.addEventListener('blur',reset);window.addEventListener('resize',reset);window.addEventListener('orientationchange',reset);document.addEventListener('visibilitychange',()=>{if(document.hidden)reset();});media.addEventListener('change',configure);configure();
- function update(dt){if(revision!==controls.state.revision){reset();revision=controls.state.revision;sync();}if(!touchDevice())return;controls.input.moveAxes(axes[0],axes[1],dt);}
+ function update(dt){if(revision!==controls.state.revision){reset();revision=controls.state.revision;sync();}if(!touchNavigation())return;controls.input.moveAxes(axes[0],axes[1],dt);}
  return {update,reset};
 };

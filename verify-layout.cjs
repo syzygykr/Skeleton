@@ -28,6 +28,15 @@ const {chromium}=require(process.env.PLAYWRIGHT_PATH||'playwright'),{pathToFileU
     }else assert(!await p.locator('.mobile-panel-toggle').isVisible());
     if((mobile&&width===390)||(!mobile&&width===1440))await p.screenshot({path:path.join(__dirname,mobile?'preview-layout-mobile.png':'preview-layout-pc.png')});
    }
+   if(profile==='tablet-mouse'){
+    await p.locator('[data-navigation="interior"]').click();
+    assert(!await p.locator('.mobile-stick').isVisible(),'Mouse on touch-capable PC must not show joystick');
+    await p.evaluate(()=>document.exitPointerLock?.());
+    const r=await p.locator('#cv').boundingBox();await p.touchscreen.tap(r.x+r.width*.7,r.y+r.height*.5);
+    assert(await p.locator('.mobile-stick').isVisible(),'Touch should enable joystick');
+    await p.mouse.move(r.x+r.width*.5,r.y+r.height*.4);
+    assert(!await p.locator('.mobile-stick').isVisible(),'Returning to mouse hides joystick');
+   }
    assert.deepEqual(errors,[]);assert.equal(await p.evaluate(()=>MuseumViewer.gl.getError()),0);await ctx.close();
   }console.log('PASS 75:25 desktop/mobile/tablet-with-mouse layout at 6 viewport sizes, right alignment, mobile panel hide/restore and stable camera, button bounds, no page overflow or WebGL errors');
  }finally{await b.close();}

@@ -19,7 +19,11 @@ const {chromium}=require(process.env.PLAYWRIGHT_PATH||'playwright'),{pathToFileU
   await touch('touchStart',[point(1,sx,sy-30),point(2,203,350)]);await touch('touchMove',[point(1,sx,sy-30),point(2,236,370)]);await p.waitForTimeout(220);
   const moving=await pose();assert(!equal(before.eye,moving.eye)&&moving.yaw<before.yaw,'Walk and look simultaneously');assert.equal(before.eye[1],moving.eye[1]);assert(Math.abs(moving.pitch)<=Math.PI/4);
   await touch('touchEnd',[]);const stop=await pose();await p.waitForTimeout(140);assert(equal(stop.eye,(await pose()).eye),'Release stops movement');
-  const fov=stop.fov;await p.locator('[data-touch="in"]').tap();assert((await pose()).fov<fov,'Interior FOV zoom');
+  const fov=stop.fov;
+  await touch('touchStart',[point(1,160,350)]);await touch('touchStart',[point(1,160,350),point(2,240,350)]);
+  const pinchStart=await pose();await touch('touchMove',[point(1,145,350),point(2,260,350)]);await touch('touchEnd',[]);
+  const pinchEnd=await pose();assert(pinchEnd.fov<fov,'Interior pinch FOV zoom');assert(equal(pinchStart.eye,pinchEnd.eye)&&pinchStart.yaw===pinchEnd.yaw&&pinchStart.pitch===pinchEnd.pitch,'Pinch must preserve position and view direction');
+  assert.equal(await p.locator('.mobile-zoom,[data-touch]').count(),0,'No redundant zoom buttons');
   await touch('touchStart',[point(1,sx,sy-30)]);await p.waitForTimeout(80);await touch('touchCancel',[]);const cancelled=await pose();await p.waitForTimeout(100);assert(equal(cancelled.eye,(await pose()).eye),'Cancelled touch stops movement');
   await p.screenshot({path:path.join(__dirname,'preview-mobile-interior.png')});
   await p.locator('[data-navigation="plan"]').tap();assert(await p.evaluate(()=>MuseumViewer.controls.state.orthographic));assert.equal(await p.locator('aside button').count(),3);assert.equal(await p.locator('#exhibit-info').textContent(),'');
