@@ -33,7 +33,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_PATH||'playwright'),{pathToFileU
     assert(!await p.locator('.mobile-stick').isVisible(),'Mouse on touch-capable PC must not show joystick');
     await p.evaluate(()=>document.exitPointerLock?.());
     const r=await p.locator('#cv').boundingBox();await p.touchscreen.tap(r.x+r.width*.7,r.y+r.height*.5);
-    assert(await p.locator('.mobile-stick').isVisible(),'Touch should enable joystick');
+    assert.equal(await p.locator('.mobile-stick').count(),0,'Joystick removed for all devices');
     await p.mouse.move(r.x+r.width*.5,r.y+r.height*.4);
     assert(!await p.locator('.mobile-stick').isVisible(),'Returning to mouse hides joystick');
    }

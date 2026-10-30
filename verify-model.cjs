@@ -34,6 +34,11 @@ for(const f of model.floors){
 for(const w of [...(data.shell||[]),...data.walls])for(const [i,o] of (w.openings||[]).entries()){
   const start=ctx.window.MuseumGeometry.point(w.a),end=ctx.window.MuseumGeometry.point(w.b),length=Math.hypot(end[0]-start[0],end[1]-start[1]);
   assert((o.to-o.from)*length>.8,'Narrow opening '+w.id);
+  if(o.kind==='recess'){
+    assert(model.parts.some(p=>p.id===w.id+'-recess-back-'+i&&p.group==='wall'),'Recess must retain a solid back '+w.id);
+    if(o.glazed)assert(model.parts.some(p=>p.id===w.id+'-recess-glass-'+i&&p.group==='displayGlass'),'Recess glass missing '+w.id);
+    continue;
+  }
   // The center below the lintel must remain clear of every wall piece of this wall.
   const middle=(o.from+o.to)/2,p=[start[0]+(end[0]-start[0])*middle,start[1]+(end[1]-start[1])*middle];
   for(const part of model.parts.filter(p=>p.group==='wall'&&p.id.startsWith(w.id+'-'))){const dx=p[0]-part.position[0],dz=p[1]-part.position[2],x=Math.cos(part.yaw)*dx-Math.sin(part.yaw)*dz,z=Math.sin(part.yaw)*dx+Math.cos(part.yaw)*dz;
@@ -81,7 +86,8 @@ for(let x=175;x<=235;x+=2){
 }
 const northGlass=data.frames.find(f=>f.id==='entrance-glass-north'),southGlass=data.frames.find(f=>f.id==='entrance-glass-south');
 assert.equal(northGlass.a[1],318);assert(southGlass.b[1]<496);assert.equal(northGlass.b[1],clear.doorA[1]);assert.equal(southGlass.a[1],clear.doorB[1]);
-const endPost=model.parts.find(p=>p.id==='entrance-glass-south-post-3');
+assert.equal(southGlass.divisions,2,'Remove first southern glass bay');
+const endPost=model.parts.find(p=>p.id==='entrance-glass-south-post-'+southGlass.divisions);
 assert(endPost.position[2]+endPost.size[2]/2<=ctx.window.MuseumGeometry.point([205,496])[1]-data.wallThickness+1e-8,'Entrance frame protrudes through south wall');
 const counter=data.detailBoxes.find(p=>p.id==='reception-top');
 assert(counter.at[1]-counter.size[2]/data.scale/2>clear.doorB[1],'Counter must be south of entrance');
